@@ -17,8 +17,6 @@ const unsigned int callbackReturnValue = 1; // 1 = stop and drain, 2 = abort
 int inout( void *outputBuffer, void *inputBuffer, unsigned int nBufferFrames,
            double streamTime, RtAudioStreamStatus status, void *data )
 {
-    // Since the number of input and output channels is equal, we can do
-    // a simple buffer copy operation here.
     if ( status ) std::cout << "Stream over/underflow detected." << std::endl;
 
     if ( streamTime >= streamTimePrintTime ) {
@@ -32,25 +30,25 @@ int inout( void *outputBuffer, void *inputBuffer, unsigned int nBufferFrames,
     double *inValues = (double *) data;
     for ( i=0; i<nBufferFrames; i++ ) {
       for ( j=0; j<channelsGlobal; j++ ) {
-        inValues[j] = *inBuffer++ / SCALE;
-        std::cout << "i\t" << i << "\tj\t" << j << "\tval=\t"  << inValues[j] << std::endl;
+//        inValues[j] = *inBuffer++ / SCALE;
+//        std::cout << "frame = " << frameCounter+i << "\tchannel = " << j << "\tval = "  << inValues[j] << std::endl;
       }
     }
 
-//    unsigned int *bytes = (unsigned int *) data;
-//    memcpy( outputBuffer, inputBuffer, *bytes );
+    unsigned int *bytes = (unsigned int *) data;
+    memcpy( outputBuffer, inputBuffer, *bytes );
 
-    extern unsigned int channelsGlobal;
-    MY_TYPE *buffer = (MY_TYPE *) outputBuffer;
-    double *lastValues = (double *) data;
-    for ( i=0; i<nBufferFrames; i++ ) {
-      for ( j=0; j<channelsGlobal; j++ ) {
-//          std::cout << "i\t" << i << "\tj\t" << j << "\tval=\t"  << lastValues[j] << std::endl;
-        *buffer++ = (MY_TYPE) (lastValues[j] * SCALE * 0.5);
-        lastValues[j] += BASE_RATE * (j+1+(j*0.1));
-        if ( lastValues[j] >= 1.0 ) lastValues[j] -= 2.0;
-      }
-    }
+//    extern unsigned int channelsGlobal;
+//    MY_TYPE *buffer = (MY_TYPE *) outputBuffer;
+//    double *lastValues = (double *) data;
+//    for ( i=0; i<nBufferFrames; i++ ) {
+//      for ( j=0; j<channelsGlobal; j++ ) {
+////          std::cout << "i\t" << i << "\tj\t" << j << "\tval=\t"  << lastValues[j] << std::endl;
+//        *buffer++ = (MY_TYPE) (lastValues[j] * SCALE * 0.5);
+//        lastValues[j] += BASE_RATE * (j+1+(j*0.1));
+//        if ( lastValues[j] >= 1.0 ) lastValues[j] -= 2.0;
+//      }
+//    }
     localStreamTime = streamTime;
     frameCounter += nBufferFrames;
     if ( checkCount && ( frameCounter >= nFrames ) ) return callbackReturnValue;
@@ -90,7 +88,7 @@ int saw( void *outputBuffer, void * /*inputBuffer*/, unsigned int nBufferFrames,
 
 Duplex::Duplex(QObject *parent) : QThread(parent)
 {
-    channels = 1;
+    channels = 2;
     channelsGlobal = channels;
     fs = 48000;
     bufferBytes = 0;
@@ -109,7 +107,7 @@ Duplex::Duplex(QObject *parent) : QThread(parent)
     adac->showWarnings( true );
 
     // Set the same number of channels for both input and output.
-    unsigned int bufferFrames = 512;
+    unsigned int bufferFrames = 128;
     iParams.deviceId = iDevice;
     iParams.nChannels = channels;
     iParams.firstChannel = iOffset;
@@ -123,6 +121,7 @@ Duplex::Duplex(QObject *parent) : QThread(parent)
         oParams.deviceId = adac->getDefaultOutputDevice();
 
     RtAudio::StreamOptions options;
+    options.flags = RTAUDIO_SCHEDULE_REALTIME;
 
     if (true) {
     bufferBytes = bufferFrames * channels * sizeof( MY_TYPE );
@@ -149,7 +148,7 @@ void Duplex::run() {
     adac->startStream();
     localStreamTime = 0.0;
     while ( localStreamTime < 3.0 ) {
-        msleep(1);
+        msleep(100);
     };
     if ( adac->isStreamOpen() ) adac->closeStream();
     std::cout << "\nstream closed" << std::endl;
