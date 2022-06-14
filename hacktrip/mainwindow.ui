@@ -24,7 +24,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>go</string>
+     <string>test (audio)</string>
     </property>
    </widget>
    <widget class="QPushButton" name="quitButton">

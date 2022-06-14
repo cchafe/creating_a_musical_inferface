@@ -10,7 +10,7 @@ MainWindow::~MainWindow() { delete ui; }
 
 void MainWindow::on_duplexButton_clicked() {
   audio = new Duplex(); // create a new rtaudio thread
-  audio->start();       // run it
+  audio->start();       // and run it
 }
 
 void MainWindow::on_quitButton_clicked() { qApp->quit(); }
