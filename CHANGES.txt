@@ -1,4 +1,6 @@
 merge branch hacktrip-rtaudio -> main
 new branch hacktrip-module-rtaudio
-
+  clean up
+  straight wire audio in->out or signal processing in->dsp->out
+  quit button
 

@@ -1,27 +1,32 @@
 #ifndef DUPLEX_H
 #define DUPLEX_H
 
-#include <QThread>
 #include <QObject>
+#include <QThread>
 #include <rtaudio/RtAudio.h>
 
-class Duplex : public QThread
-{
+/*
+ * encapsulate rtaudio and inherit
+ * multi-threading from qthread
+ */
+
+class Duplex : public QThread {
 public:
-    explicit Duplex(QObject *parent = nullptr);
+  explicit Duplex(QObject *parent = nullptr);
+
 private:
-
-    unsigned int channels;
-    unsigned int  fs;
-    unsigned int bufferBytes;
-    unsigned int oDevice, iDevice,
-    iOffset, oOffset;
-    RtAudio* adac;
-    RtAudio::StreamParameters iParams, oParams;
-
-    virtual void run();
-
-
+  // these are identical to the rtaudio/tests/Duplex.cpp example
+  // except with m_ prepended
+  unsigned int m_channels;
+  unsigned int m_fs;
+  unsigned int m_bufferBytes;
+  unsigned int m_oDevice, m_iDevice, m_iOffset, m_oOffset;
+  RtAudio *m_adac;
+  RtAudio::StreamParameters m_iParams, m_oParams;
+  void resetGlobals();
+  // QThreads have a run method which starts a separate thread
+  // when start() is called
+  virtual void run();
 };
 
 #endif // DUPLEX_H

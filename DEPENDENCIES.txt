@@ -14,3 +14,7 @@ tests/duplex 1 48000
 
 tests/audioprobe
 
+///////////////////////////////////////////////////
+when coding, reformat code with
+clang-format -i hacktrip/main.cpp hacktrip/mainwindow.* hacktrip/duplex.*
+
