@@ -20,6 +20,8 @@ public:
 private slots:
     void on_connectButton_clicked();
 
+    void on_quithButton_clicked();
+
 private:
     Ui::MainWindow *ui;
     TCP mTcpClient;

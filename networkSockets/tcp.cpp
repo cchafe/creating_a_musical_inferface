@@ -1,4 +1,5 @@
 #include "tcp.h"
+#include <iostream>
 
 TCP::TCP()
 {
@@ -8,17 +9,22 @@ TCP::TCP()
 void TCP::connectToHost()
 {
     socket->connectToHost(QString("127.0.0.1"),5000);
+    socket->waitForConnected(500);
 }
 
 void TCP::sendToHost()
 {
-    QString request("hi");
-    QByteArray ba;
-    ba.append(request);
-    ba.append('\n');
-    socket->write(ba);
-    socket->waitForBytesWritten(1000);
-    //    fprintf(stderr,"wrote :%s\n",request.toLocal8Bit().data());
+    if (socket->state()==QTcpSocket::ConnectedState) {
+        QString request("hi");
+        QByteArray ba;
+        ba.append(request);
+        ba.append('\n');
+        socket->write(ba);
+        socket->waitForBytesWritten(1000);
+        //    fprintf(stderr,"wrote :%s\n",request.toLocal8Bit().data());
+    } else
+        std::cout << "TCP: tried to send data but not connected to server" << std::endl;
+
 }
 
 void TCP::readyRead()
