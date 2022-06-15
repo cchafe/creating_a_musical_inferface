@@ -49,7 +49,10 @@ void UDP::run() {
     mPeerPort = 61002;
     socket.bind(mPeerAddr, mPeerPort);
     std::cout << "UDP send: start" << std::endl;
+    int seq = 0;
     while (true) {
+        mHeader.SeqNumber = (uint16_t)seq++;
+        memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
         socket.writeDatagram(mBuf, mPeerAddr, mPeerPort);
         msleep(3);
     }
