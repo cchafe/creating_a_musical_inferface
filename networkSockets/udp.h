@@ -27,7 +27,7 @@ private:
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
     int mPeerPort;
-    QByteArray buf;
+    QByteArray mBuf;
 };
 
 #endif // UDP_H
