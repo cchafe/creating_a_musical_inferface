@@ -5,7 +5,7 @@
 
 TCP::TCP()
 {
-    socket = new QTcpSocket();
+    mSocket = new QTcpSocket();
 }
 
 void TCP::connectToHost()
@@ -20,19 +20,19 @@ void TCP::connectToHost()
             serverHostAddress = info.addresses().constFirst();
         }
     }
-    socket->connectToHost(serverHostAddress,4464);
-    socket->waitForConnected(500);
+    mSocket->connectToHost(serverHostAddress,4464);
+    mSocket->waitForConnected(500);
 }
 
 void TCP::sendToHost()
 {
-    if (socket->state()==QTcpSocket::ConnectedState) {
+    if (mSocket->state()==QTcpSocket::ConnectedState) {
         QString request("4464");
         QByteArray ba;
         ba.append(request);
         ba.append('\n');
-        socket->write(ba);
-        socket->waitForBytesWritten(1000);
+        mSocket->write(ba);
+        mSocket->waitForBytesWritten(1000);
         //    fprintf(stderr,"wrote :%s\n",request.toLocal8Bit().data());
         readyRead();
     } else
@@ -42,14 +42,14 @@ void TCP::sendToHost()
 
 void TCP::readyRead()
 {
-    socket->waitForReadyRead();
-    quint16 bytes =  socket->bytesAvailable();
+    mSocket->waitForReadyRead();
+    quint16 bytes =  mSocket->bytesAvailable();
     std::cout << "TCP: from server " << bytes << std::endl;
 
     uint32_t udp_port;
     int size       = sizeof(udp_port);
     char* port_buf = new char[size];
-    socket->read(port_buf, size);
+    mSocket->read(port_buf, size);
     udp_port = qFromLittleEndian<qint32>(port_buf);
 
     std::cout << "TCP: ephemeral port = " << udp_port << std::endl;
@@ -83,7 +83,7 @@ void TCP::disconnected()
 
 void TCP::error(QAbstractSocket::SocketError socketError)
 {
-    QString errorStr=socket->errorString();
+    QString errorStr=mSocket->errorString();
     fprintf(stderr,"An error occured :%s\n",errorStr.toLocal8Bit().data());
 }
 

@@ -4,6 +4,7 @@
 #include <QTcpSocket>
 #include <QMainWindow>
 #include "tcp.h"
+#include "udp.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -22,9 +23,12 @@ private slots:
 
     void on_quithButton_clicked();
 
+    void on_sendAutioButton_clicked();
+
 private:
     Ui::MainWindow *ui;
     TCP mTcpClient;
+    UDP mUdpSend;
 //    QString mRemoteClientName;  ///< Remote JackAudio Client Name for hub client mode
 //    int mReceiverBindPort;  ///< Incoming (receiving) port for local machine
 //    QString mPeerAddress;

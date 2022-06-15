@@ -69,3 +69,9 @@ void MainWindow::on_quithButton_clicked()
     qApp->quit();
 }
 
+
+void MainWindow::on_sendAutioButton_clicked()
+{
+    mUdpSend.start();
+}
+

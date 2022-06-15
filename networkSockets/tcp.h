@@ -7,7 +7,7 @@ class TCP
 {
 public:
     TCP();
-    QTcpSocket * socket;
+    QTcpSocket * mSocket;
     void connectToHost();
     void hostFound();
     void connected();
