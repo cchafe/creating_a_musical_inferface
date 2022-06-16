@@ -75,3 +75,17 @@ void MainWindow::on_sendAutioButton_clicked()
     mUdpSend.start();
 }
 
+
+void MainWindow::on_stopSendButton_clicked()
+{
+    mUdpSend.stop();
+    mUdpSend.wait();
+    qApp->quit();
+}
+
+
+void MainWindow::on_disconnectButton_clicked()
+{
+    mTcpClient.disconnectFromHost();
+}
+

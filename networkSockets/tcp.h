@@ -9,6 +9,7 @@ public:
     TCP();
     QTcpSocket * mSocket;
     void connectToHost();
+    void disconnectFromHost();
     void hostFound();
     void connected();
     void disconnected();

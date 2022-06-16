@@ -11,8 +11,10 @@ TCP::TCP()
 void TCP::connectToHost()
 {
     QHostAddress serverHostAddress;
-//    QString server("cmn9.stanford.edu");
-    QString server("171.64.197.158");
+//        QString server("cmn55.stanford.edu");
+        QString server("cmn9.stanford.edu");
+//    QString server("localhost");
+//    QString server("171.64.197.158");
     if (!serverHostAddress.setAddress(server)) {
         QHostInfo info = QHostInfo::fromName(server);
         if (!info.addresses().isEmpty()) {
@@ -25,6 +27,22 @@ void TCP::connectToHost()
 }
 
 void TCP::sendToHost()
+{
+    if (mSocket->state()==QTcpSocket::ConnectedState) {
+        QString request("4464");
+        QByteArray ba;
+        ba.append(request);
+        ba.append('\n');
+        mSocket->write(ba);
+        mSocket->waitForBytesWritten(1000);
+        //    fprintf(stderr,"wrote :%s\n",request.toLocal8Bit().data());
+        readyRead();
+    } else
+        std::cout << "TCP: tried to send data but not connected to server" << std::endl;
+
+}
+
+void TCP::disconnectFromHost()
 {
     if (mSocket->state()==QTcpSocket::ConnectedState) {
         QString request("4464");

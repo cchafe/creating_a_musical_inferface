@@ -21,13 +21,14 @@ class UDP : public QThread
 {
 public:
     UDP();
+    void stop();
 private:
     virtual void run();
-    void sendPacket();
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
     int mPeerPort;
     QByteArray mBuf;
+    bool mStream;
 };
 
 #endif // UDP_H

@@ -4,7 +4,7 @@
 
 UDP::UDP()
 {
-    int FPP = 128;
+    int FPP = 256;
     int audioDataLen = FPP*2*2;
     mHeader.TimeStamp = (uint64_t)0;
     mHeader.SeqNumber = (uint16_t)0;
@@ -30,15 +30,17 @@ UDP::UDP()
             "Sequence Number             = " << static_cast<int>(mHeader.SeqNumber) << "\n"
             "Time Stamp                  = " << mHeader.TimeStamp << "\n"
             << "\n" << "\n";
-
+stop();
 }
 
 void UDP::run() {
     // socket needs to be created here in this thread
     QUdpSocket socket;
     QHostAddress mPeerAddr;
-    //    QString server("cmn9.stanford.edu");
-    QString server("171.64.197.158");
+        QString server("cmn9.stanford.edu");
+//    QString server("cmn55.stanford.edu");
+//    QString server("localhost");
+//    QString server("171.64.197.158");
     if (!mPeerAddr.setAddress(server)) {
         QHostInfo info = QHostInfo::fromName(server);
         if (!info.addresses().isEmpty()) {
@@ -50,14 +52,28 @@ void UDP::run() {
     socket.bind(mPeerAddr, mPeerPort);
     std::cout << "UDP send: start" << std::endl;
     int seq = 0;
-    while (true) {
-        mHeader.SeqNumber = (uint16_t)seq++;
+    int FPP = 128;
+    int audioDataLen = FPP*2*2;
+    int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
+    mStream = true;
+    while (mStream) {
+        seq++;
+        seq %= 65536;
+        mHeader.SeqNumber = (uint16_t)seq;
         memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
         socket.writeDatagram(mBuf, mPeerAddr, mPeerPort);
-        msleep(3);
+        msleep(5);
     }
+    // Send exit packet (with 1 redundant packet).
+    int controlPacketSize = 63;
+    std::cout << "sending exit packet" << std::endl;
+    mBuf.resize(controlPacketSize);
+    mBuf.fill(0xff,controlPacketSize);
+    socket.writeDatagram(mBuf, mPeerAddr, mPeerPort);
+    socket.writeDatagram(mBuf, mPeerAddr, mPeerPort);
 }
 
-void UDP::sendPacket()
+void UDP::stop()
 {
+    mStream = false;
 }

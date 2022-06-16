@@ -25,6 +25,10 @@ private slots:
 
     void on_sendAutioButton_clicked();
 
+    void on_stopSendButton_clicked();
+
+    void on_disconnectButton_clicked();
+
 private:
     Ui::MainWindow *ui;
     TCP mTcpClient;
