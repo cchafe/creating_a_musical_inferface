@@ -18,24 +18,22 @@ void TCP::connectToHost()
             serverHostAddress = info.addresses().constFirst();
         }
     }
-    mSocket->connectToHost(serverHostAddress,gPort);
+    mSocket->connectToHost(serverHostAddress,gPort.toInt());
     mSocket->waitForConnected(500);
 }
 
 void TCP::sendToHost()
 {
     if (mSocket->state()==QTcpSocket::ConnectedState) {
-        QString request(gPort);
         QByteArray ba;
-        ba.append(request);
+        ba.append(gPort);
         ba.append('\n');
         mSocket->write(ba);
         mSocket->waitForBytesWritten(gSocketWaitMs);
-        //    fprintf(stderr,"wrote :%s\n",request.toLocal8Bit().data());
+        std::cout << "TCP: waitForBytesWritten" << std::endl;
         readyRead();
     } else
         std::cout << "TCP: tried to send data but not connected to server" << std::endl;
-
 }
 
 void TCP::readyRead()

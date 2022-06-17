@@ -22,6 +22,7 @@ class UDP : public QThread
 public:
     UDP();
     void stop();
+    void setRcv();
 private:
     virtual void run();
     HeaderStruct mHeader;
@@ -29,6 +30,7 @@ private:
     int mPeerPort;
     QByteArray mBuf;
     bool mStream;
+    bool mRcv; // else Send
 };
 
 #endif // UDP_H

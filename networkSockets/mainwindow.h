@@ -31,8 +31,6 @@ private:
     Ui::MainWindow *ui;
     TCP mTcpClient;
     UDP mUdpSend;
-//    QString mRemoteClientName;  ///< Remote JackAudio Client Name for hub client mode
-//    int mReceiverBindPort;  ///< Incoming (receiving) port for local machine
-//    QString mPeerAddress;
+    UDP mUdpRcv;
 };
 #endif // MAINWINDOW_H

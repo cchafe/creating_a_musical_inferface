@@ -10,7 +10,8 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    std::cout << "run a test with : nc -l 5000 " << std::endl;
+    std::cout << "run a test with : nc -l 4464 " << std::endl;
+    mUdpRcv.setRcv();
 }
 
 MainWindow::~MainWindow()
@@ -32,6 +33,7 @@ void MainWindow::on_quitButton_clicked()
 void MainWindow::on_sendAutioButton_clicked()
 {
     mUdpSend.start();
+    mUdpRcv.start();
 }
 
 void MainWindow::on_stopSendButton_clicked()

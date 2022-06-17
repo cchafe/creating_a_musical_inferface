@@ -33,6 +33,10 @@ UDP::UDP()
 stop();
 }
 
+void UDP::setRcv() {
+    mRcv = true;
+}
+
 void UDP::run() {
     // socket needs to be created here in this thread
     QUdpSocket socket;
@@ -52,11 +56,17 @@ void UDP::run() {
 //    int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
     mStream = true;
     while (mStream) {
+        if (mRcv) {
+            int len = socket.readDatagram(mBuf.data(), mBuf.size());
+            std::cout << "UDP rcv: bytes = " << len << std::endl;
+
+        } else {
         seq++;
         seq %= 65536;
         mHeader.SeqNumber = (uint16_t)seq;
         memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
         socket.writeDatagram(mBuf, serverHostAddress, mPeerPort);
+        }
         msleep(5);
     }
     // Send exit packet (with 1 redundant packet).
