@@ -9,10 +9,8 @@ public:
     TCP();
     QTcpSocket * mSocket;
     void connectToHost();
-    void disconnectFromHost();
     void hostFound();
     void connected();
-    void disconnected();
     void sendToHost();
     void error(QAbstractSocket::SocketError socketError);
     void bytesWritten(qint64 bytes);

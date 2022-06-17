@@ -15,6 +15,7 @@ SOURCES += \
     udp.cpp
 
 HEADERS += \
+    globals.h \
     mainwindow.h \
     tcp.h \
     udp.h

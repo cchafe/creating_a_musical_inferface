@@ -2,7 +2,7 @@
 #include <iostream>
 #include <QtEndian>
 #include <QHostInfo>
-
+#include "globals.h"
 TCP::TCP()
 {
     mSocket = new QTcpSocket();
@@ -11,46 +11,26 @@ TCP::TCP()
 void TCP::connectToHost()
 {
     QHostAddress serverHostAddress;
-//        QString server("cmn55.stanford.edu");
-        QString server("cmn9.stanford.edu");
-//    QString server("localhost");
-//    QString server("171.64.197.158");
-    if (!serverHostAddress.setAddress(server)) {
-        QHostInfo info = QHostInfo::fromName(server);
+    if (!serverHostAddress.setAddress(gServer)) {
+        QHostInfo info = QHostInfo::fromName(gServer);
         if (!info.addresses().isEmpty()) {
             // use the first IP address
             serverHostAddress = info.addresses().constFirst();
         }
     }
-    mSocket->connectToHost(serverHostAddress,4464);
+    mSocket->connectToHost(serverHostAddress,gPort);
     mSocket->waitForConnected(500);
 }
 
 void TCP::sendToHost()
 {
     if (mSocket->state()==QTcpSocket::ConnectedState) {
-        QString request("4464");
+        QString request(gPort);
         QByteArray ba;
         ba.append(request);
         ba.append('\n');
         mSocket->write(ba);
-        mSocket->waitForBytesWritten(1000);
-        //    fprintf(stderr,"wrote :%s\n",request.toLocal8Bit().data());
-        readyRead();
-    } else
-        std::cout << "TCP: tried to send data but not connected to server" << std::endl;
-
-}
-
-void TCP::disconnectFromHost()
-{
-    if (mSocket->state()==QTcpSocket::ConnectedState) {
-        QString request("4464");
-        QByteArray ba;
-        ba.append(request);
-        ba.append('\n');
-        mSocket->write(ba);
-        mSocket->waitForBytesWritten(1000);
+        mSocket->waitForBytesWritten(gSocketWaitMs);
         //    fprintf(stderr,"wrote :%s\n",request.toLocal8Bit().data());
         readyRead();
     } else
@@ -88,15 +68,9 @@ void TCP::readyRead()
     //    }
 }
 
-
 void TCP::connected()
 {
     fprintf(stderr,"Connected to server\n");
-}
-
-void TCP::disconnected()
-{
-    fprintf(stderr,"Disconnected from server\n");
 }
 
 void TCP::error(QAbstractSocket::SocketError socketError)
@@ -110,9 +84,3 @@ void TCP::hostFound()
     fprintf(stderr,"Host found\n");
 }
 
-void TCP::bytesWritten(qint64 bytes)
-{
-    QString outString = QString::number(bytes) + " bytes writen.";
-    fprintf(stderr,"%s\n",outString.toLocal8Bit().data());
-
-}
