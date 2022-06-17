@@ -19,7 +19,7 @@ void TCP::connectToHost()
         }
     }
     mSocket->connectToHost(serverHostAddress,gPort.toInt());
-    mSocket->waitForConnected(500);
+    mSocket->waitForConnected(2500);
 }
 
 void TCP::sendToHost()
