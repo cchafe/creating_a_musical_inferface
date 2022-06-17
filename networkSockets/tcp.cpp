@@ -68,19 +68,3 @@ void TCP::readyRead()
     //    }
 }
 
-void TCP::connected()
-{
-    fprintf(stderr,"Connected to server\n");
-}
-
-void TCP::error(QAbstractSocket::SocketError socketError)
-{
-    QString errorStr=mSocket->errorString();
-    fprintf(stderr,"An error occured :%s\n",errorStr.toLocal8Bit().data());
-}
-
-void TCP::hostFound()
-{
-    fprintf(stderr,"Host found\n");
-}
-
