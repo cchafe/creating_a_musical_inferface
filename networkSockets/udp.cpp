@@ -5,6 +5,7 @@
 
 UDP::UDP()
 {
+    mRcv = false;
     int audioDataLen = gFPP*2*2;
     mHeader.TimeStamp = (uint64_t)0;
     mHeader.SeqNumber = (uint16_t)0;
@@ -20,17 +21,17 @@ UDP::UDP()
 
     std::cout << "Default Packet Header:" << std::endl;
     std::cout << "Buffer Size               = " << static_cast<int>(mHeader.BufferSize)
-         << std::endl;
+              << std::endl;
     // Get the sample rate in Hz form the AudioInterface::samplingRateT
     int sample_rate = mHeader.SamplingRate;
     std::cout << "Sampling Rate               = " << sample_rate << "\n"
-            "Audio Bit Resolutions       = " << static_cast<int>(mHeader.BitResolution) << "\n"
-            "Number of Incoming Channels = " << static_cast<int>(mHeader.NumIncomingChannelsFromNet) << "\n"
-            "Number of Outgoing Channels = " << static_cast<int>(mHeader.NumOutgoingChannelsToNet) << "\n"
-            "Sequence Number             = " << static_cast<int>(mHeader.SeqNumber) << "\n"
-            "Time Stamp                  = " << mHeader.TimeStamp << "\n"
-            << "\n" << "\n";
-stop();
+                                                                    "Audio Bit Resolutions       = " << static_cast<int>(mHeader.BitResolution) << "\n"
+                                                                                                                                                   "Number of Incoming Channels = " << static_cast<int>(mHeader.NumIncomingChannelsFromNet) << "\n"
+                                                                                                                                                                                                                                               "Number of Outgoing Channels = " << static_cast<int>(mHeader.NumOutgoingChannelsToNet) << "\n"
+                                                                                                                                                                                                                                                                                                                                         "Sequence Number             = " << static_cast<int>(mHeader.SeqNumber) << "\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                    "Time Stamp                  = " << mHeader.TimeStamp << "\n"
+              << "\n" << "\n";
+    stop();
 }
 
 void UDP::setRcv() {
@@ -49,23 +50,32 @@ void UDP::run() {
         }
     }
     mPeerPort = 61002;
-    socket.bind(serverHostAddress, mPeerPort);
-    std::cout << "UDP send: start" << std::endl;
+    int ret = 0;
+    if (mRcv)  {
+        ret = socket.bind(QHostAddress::LocalHost, 4464);
+        std::cout << "UDP rcv: start = " << ret << std::endl;
+    } else {
+ret = socket.bind(serverHostAddress, mPeerPort);
+std::cout << "UDP send: start = " << ret << std::endl;
+    }
     int seq = 0;
-//    int audioDataLen = gFPP*2*2;
-//    int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
+    //    int audioDataLen = gFPP*2*2;
+    //    int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
     mStream = true;
     while (mStream) {
         if (mRcv) {
-            int len = socket.readDatagram(mBuf.data(), mBuf.size());
-            std::cout << "UDP rcv: bytes = " << len << std::endl;
-
+            if (socket.hasPendingDatagrams())
+            {
+                std::cout << "UDP rcv: bytes = " << socket.pendingDatagramSize() << std::endl;
+                int len = socket.readDatagram(mBuf.data(), mBuf.size());
+                                std::cout << "UDP rcv: bytes = " << len << std::endl;
+            }
         } else {
-        seq++;
-        seq %= 65536;
-        mHeader.SeqNumber = (uint16_t)seq;
-        memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
-        socket.writeDatagram(mBuf, serverHostAddress, mPeerPort);
+            seq++;
+            seq %= 65536;
+            mHeader.SeqNumber = (uint16_t)seq;
+            memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
+            socket.writeDatagram(mBuf, serverHostAddress, mPeerPort);
         }
         msleep(5);
     }
