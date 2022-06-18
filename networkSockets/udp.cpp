@@ -59,10 +59,10 @@ void UDP::run() {
     sock.setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
     int ret = 0;
     if (mRcv)  {
-        ret = sock.bind(QHostAddress::Any,4465);
+        ret = sock.bind(QHostAddress::Any,4464);
         std::cout << "UDP rcv: start = " << ret << std::endl;
     } else { // sender
-        ret = sock.bind(4465);
+        ret = sock.bind(4464);
         std::cout << "UDP send: start = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
     }
     msleep(100);
