@@ -59,10 +59,10 @@ void UDP::run() {
     sock.setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
     int ret = 0;
     if (mRcv)  {
-        ret = sock.bind(QHostAddress::Any,4464);
+        ret = sock.bind(QHostAddress::Any,gAudioPort);
         std::cout << "UDP rcv: start = " << ret << std::endl;
     } else { // sender
-        ret = sock.bind(4464);
+        ret = sock.bind(gAudioPort);
         std::cout << "UDP send: start = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
     }
     msleep(100);
@@ -73,9 +73,16 @@ void UDP::run() {
         if (mRcv) {
             //            std::cout << "UDP check incoming " << sock.pendingDatagramSize() << std::endl;
             if (sock.hasPendingDatagrams()) {
-                std::cout << "UDP rcv: pending bytes = " << sock.pendingDatagramSize() << std::endl;
+//                std::cout << "UDP rcv: pending bytes = " << sock.pendingDatagramSize() << std::endl;
                 int len = sock.readDatagram(mBuf.data(), mBuf.size());
-                std::cout << "UDP rcv: bytes = " << len << std::endl;
+//                std::cout << "UDP rcv: bytes = " << len << std::endl;
+                if (len != mBuf.size())
+                std::cout << "UDP rcv: not full packet (" << len << ") should be " << mBuf.size() << std::endl;
+                else {
+                    memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
+                    seq = mHeader.SeqNumber;
+                std::cout << "UDP rcv: packet = " << seq << std::endl;
+                }
                 msleep(1);
             }
         } else {
@@ -84,7 +91,8 @@ void UDP::run() {
             mHeader.SeqNumber = (uint16_t)seq;
             memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
             sock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
-            msleep(3);
+            std::cout << "UDP send: packet = " << seq << std::endl;
+            msleep(5);
         }
     }
     if (!mRcv) {
