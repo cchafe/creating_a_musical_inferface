@@ -21,11 +21,9 @@ public:
 private slots:
     void on_connectButton_clicked();
 
-    void on_quitButton_clicked();
-
     void on_sendAutioButton_clicked();
 
-    void on_stopSendButton_clicked();
+    void on_quitButton_clicked();
 
 private:
     Ui::MainWindow *ui;

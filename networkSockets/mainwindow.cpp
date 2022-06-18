@@ -25,20 +25,18 @@ void MainWindow::on_connectButton_clicked()
     mTcpClient.sendToHost();
 }
 
-void MainWindow::on_quitButton_clicked()
-{
-    qApp->quit();
-}
-
 void MainWindow::on_sendAutioButton_clicked()
 {
-    mUdpSend.start();
     mUdpRcv.start();
+    mUdpSend.start();
 }
 
-void MainWindow::on_stopSendButton_clicked()
+void MainWindow::on_quitButton_clicked()
 {
+    mUdpRcv.stop();
+    mUdpRcv.wait();
     mUdpSend.stop();
     mUdpSend.wait();
     qApp->quit();
 }
+

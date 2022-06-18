@@ -21,6 +21,7 @@ class UDP : public QThread
 {
 public:
     UDP();
+    void pause();
     void stop();
     void setRcv();
 private:
@@ -29,7 +30,7 @@ private:
     QHostAddress mPeerAddr;
     int mPeerPort;
     QByteArray mBuf;
-    bool mStream;
+    bool mStop;
     bool mRcv; // else Send
 };
 

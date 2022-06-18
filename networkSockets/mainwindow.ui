@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>424</width>
+    <width>258</width>
     <height>234</height>
    </rect>
   </property>
@@ -27,24 +27,11 @@
      <string>connect</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="quitButton">
-    <property name="geometry">
-     <rect>
-      <x>80</x>
-      <y>80</y>
-      <width>91</width>
-      <height>36</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>quit</string>
-    </property>
-   </widget>
    <widget class="QPushButton" name="sendAutioButton">
     <property name="geometry">
      <rect>
-      <x>220</x>
-      <y>20</y>
+      <x>80</x>
+      <y>70</y>
       <width>91</width>
       <height>36</height>
      </rect>
@@ -53,17 +40,17 @@
      <string>sendAutio</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="stopSendButton">
+   <widget class="QPushButton" name="quitButton">
     <property name="geometry">
      <rect>
-      <x>220</x>
-      <y>80</y>
+      <x>80</x>
+      <y>120</y>
       <width>91</width>
       <height>36</height>
      </rect>
     </property>
     <property name="text">
-     <string>stopSend</string>
+     <string>quit</string>
     </property>
    </widget>
   </widget>
@@ -72,7 +59,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>424</width>
+     <width>258</width>
      <height>27</height>
     </rect>
    </property>

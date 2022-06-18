@@ -3,6 +3,7 @@
 #include <QtEndian>
 #include <QHostInfo>
 #include "globals.h"
+#include <arpa/inet.h>
 TCP::TCP()
 {
     mSocket = new QTcpSocket();
@@ -18,7 +19,7 @@ void TCP::connectToHost()
             serverHostAddress = info.addresses().constFirst();
         }
     }
-    mSocket->connectToHost(serverHostAddress,gPort.toInt());
+    mSocket->connectToHost(serverHostAddress,4464);
     mSocket->waitForConnected(2500);
 }
 
@@ -26,8 +27,10 @@ void TCP::sendToHost()
 {
     if (mSocket->state()==QTcpSocket::ConnectedState) {
         QByteArray ba;
-        ba.append(gPort);
-        ba.append('\n');
+qint32 tmp = 4464;
+//qToLittleEndian(tmp);
+        ba.setNum(tmp);
+//        ba.append('\n');
         mSocket->write(ba);
         mSocket->waitForBytesWritten(gSocketWaitMs);
         std::cout << "TCP: waitForBytesWritten" << std::endl;

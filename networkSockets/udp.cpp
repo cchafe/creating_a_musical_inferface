@@ -2,7 +2,9 @@
 #include <iostream>
 #include <cstring>
 #include "globals.h"
-
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <sys/types.h>
 UDP::UDP()
 {
     mRcv = false;
@@ -31,7 +33,7 @@ UDP::UDP()
                                                                                                                                                                                                                                                                                                                                          "Sequence Number             = " << static_cast<int>(mHeader.SeqNumber) << "\n"
                                                                                                                                                                                                                                                                                                                                                                                                                     "Time Stamp                  = " << mHeader.TimeStamp << "\n"
               << "\n" << "\n";
-    stop();
+    mStop = false;
 }
 
 void UDP::setRcv() {
@@ -40,7 +42,7 @@ void UDP::setRcv() {
 
 void UDP::run() {
     // socket needs to be created here in this thread
-    QUdpSocket socket;
+    QUdpSocket sock;
     QHostAddress serverHostAddress;
     if (!serverHostAddress.setAddress(gServer)) {
         QHostInfo info = QHostInfo::fromName(gServer);
@@ -50,45 +52,54 @@ void UDP::run() {
         }
     }
     mPeerPort = 61002;
+    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    int optval = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
+               (void *) &optval, sizeof(optval));
+    sock.setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
     int ret = 0;
     if (mRcv)  {
-        ret = socket.bind(QHostAddress::LocalHost, 4464);
+        ret = sock.bind(QHostAddress::Any,4465);
         std::cout << "UDP rcv: start = " << ret << std::endl;
-    } else {
-ret = socket.bind(serverHostAddress, mPeerPort);
-std::cout << "UDP send: start = " << ret << std::endl;
+    } else { // sender
+        ret = sock.bind(4465);
+        std::cout << "UDP send: start = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
     }
+    msleep(100);
     int seq = 0;
     //    int audioDataLen = gFPP*2*2;
     //    int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
-    mStream = true;
-    while (mStream) {
+    while (!mStop) {
         if (mRcv) {
-            if (socket.hasPendingDatagrams())
-            {
-                std::cout << "UDP rcv: bytes = " << socket.pendingDatagramSize() << std::endl;
-                int len = socket.readDatagram(mBuf.data(), mBuf.size());
-                                std::cout << "UDP rcv: bytes = " << len << std::endl;
+            //            std::cout << "UDP check incoming " << sock.pendingDatagramSize() << std::endl;
+            if (sock.hasPendingDatagrams()) {
+                std::cout << "UDP rcv: pending bytes = " << sock.pendingDatagramSize() << std::endl;
+                int len = sock.readDatagram(mBuf.data(), mBuf.size());
+                std::cout << "UDP rcv: bytes = " << len << std::endl;
+                msleep(1);
             }
         } else {
             seq++;
             seq %= 65536;
             mHeader.SeqNumber = (uint16_t)seq;
             memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
-            socket.writeDatagram(mBuf, serverHostAddress, mPeerPort);
+            sock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
+            msleep(3);
         }
-        msleep(5);
     }
-    // Send exit packet (with 1 redundant packet).
-    int controlPacketSize = 63;
-    std::cout << "sending exit packet" << std::endl;
-    mBuf.resize(controlPacketSize);
-    mBuf.fill(0xff,controlPacketSize);
-    socket.writeDatagram(mBuf, serverHostAddress, mPeerPort);
-    socket.writeDatagram(mBuf, serverHostAddress, mPeerPort);
+    if (!mRcv) {
+        // Send exit packet (with 1 redundant packet).
+        int controlPacketSize = 63;
+        std::cout << "sending exit packet" << std::endl;
+        mBuf.resize(controlPacketSize);
+        mBuf.fill(0xff,controlPacketSize);
+        sock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
+        sock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
+    }
+    sock.close();
 }
 
 void UDP::stop()
 {
-    mStream = false;
+    mStop = true;
 }
