@@ -73,23 +73,45 @@ void UDP::run() {
         if (mRcv) {
             //            std::cout << "UDP check incoming " << sock.pendingDatagramSize() << std::endl;
             if (sock.hasPendingDatagrams()) {
-//                std::cout << "UDP rcv: pending bytes = " << sock.pendingDatagramSize() << std::endl;
+                //                std::cout << "UDP rcv: pending bytes = " << sock.pendingDatagramSize() << std::endl;
                 int len = sock.readDatagram(mBuf.data(), mBuf.size());
-//                std::cout << "UDP rcv: bytes = " << len << std::endl;
+                //                std::cout << "UDP rcv: bytes = " << len << std::endl;
                 if (len != mBuf.size())
-                std::cout << "UDP rcv: not full packet (" << len << ") should be " << mBuf.size() << std::endl;
+                    std::cout << "UDP rcv: not full packet (" << len << ") should be " << mBuf.size() << std::endl;
                 else {
                     memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
                     seq = mHeader.SeqNumber;
-                std::cout << "UDP rcv: packet = " << seq << std::endl;
+                    std::cout << "UDP rcv: packet = " << seq << std::endl;
                 }
                 msleep(1);
             }
-        } else {
+        } else { // sender
             seq++;
             seq %= 65536;
             mHeader.SeqNumber = (uint16_t)seq;
             memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
+            if (true) { // DSP block
+                typedef signed short MY_TYPE; // audio interface data is 16bit ints
+
+                //      demonstrates how to access incoming samples,
+                //      print, change and set outgoing samples
+                //                MY_TYPE *inBuffer = (MY_TYPE *)mBuf.data(); // sint
+                MY_TYPE *outBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
+#define SCALE                                                                  \
+    32767.0 // audio samples for processing are doubles, so this is the conversion
+                double tmp[gFPP * gChannels];
+                for (unsigned int i = 0; i < gFPP; i++) {
+                    for (unsigned int j = 0; j < gChannels; j++) {
+                        unsigned int index = i * gChannels + j;
+                        //                    tmp[index] = *inBuffer++ / SCALE;
+                        tmp[index] = ((index%30)==0) ? 1.0 : 0.0;
+//                        std::cout << "frame = " << index + i << "\tchannel = " <<
+//                                     j
+//                                  << "\tval = " << tmp[i] << std::endl;
+                         *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
+                    }
+                }
+            }
             sock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
             std::cout << "UDP send: packet = " << seq << std::endl;
             msleep(5);
