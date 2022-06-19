@@ -82,6 +82,20 @@ void UDP::run() {
                     memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
                     seq = mHeader.SeqNumber;
                     std::cout << "UDP rcv: packet = " << seq << std::endl;
+                    if (true) { // DSP block
+                        MY_TYPE *inBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
+                        double tmp[gFPP * gChannels];
+                        for (unsigned int i = 0; i < (gFPP * gChannels); i++) tmp[i] = 0.0;
+
+                        for (unsigned int i = 0; i < gFPP; i++) {
+                            for (unsigned int j = 0; j < gChannels; j++) {
+                                unsigned int index = i * gChannels + j;
+                                tmp[index] = *inBuffer++ / SCALE;
+                                if (tmp[index] > 0.1 ) std::cout << "\t frame = " << i << "\tchannel = " <<
+                                             j << "\t val = " << tmp[index] << std::endl;
+                            }
+                        }
+                    }
                 }
                 msleep(1);
             }
@@ -91,29 +105,22 @@ void UDP::run() {
             mHeader.SeqNumber = (uint16_t)seq;
             memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
             if (true) { // DSP block
-                typedef signed short MY_TYPE; // audio interface data is 16bit ints
-
-                //      demonstrates how to access incoming samples,
-                //      print, change and set outgoing samples
-                //                MY_TYPE *inBuffer = (MY_TYPE *)mBuf.data(); // sint
                 MY_TYPE *outBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
-#define SCALE                                                                  \
-    32767.0 // audio samples for processing are doubles, so this is the conversion
                 double tmp[gFPP * gChannels];
                 for (unsigned int i = 0; i < gFPP; i++) {
                     for (unsigned int j = 0; j < gChannels; j++) {
                         unsigned int index = i * gChannels + j;
                         //                    tmp[index] = *inBuffer++ / SCALE;
-                        tmp[index] = ((index%30)==0) ? 1.0 : 0.0;
-//                        std::cout << "frame = " << index + i << "\tchannel = " <<
-//                                     j
-//                                  << "\tval = " << tmp[i] << std::endl;
-                         *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
+                        tmp[index] = ((i%100)==0) ? ((j==0)? 1.0 : 0.5) : 0.0;
+                        //                        std::cout << "frame = " << index + i << "\tchannel = " <<
+                        //                                     j
+                        //                                  << "\tval = " << tmp[i] << std::endl;
+                        *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
                     }
                 }
             }
             sock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
-            std::cout << "UDP send: packet = " << seq << std::endl;
+//            std::cout << "UDP send: packet = " << seq << std::endl;
             msleep(5);
         }
     }
