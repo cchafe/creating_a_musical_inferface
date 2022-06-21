@@ -89,7 +89,7 @@ void UDP::run() {
                             for (unsigned int j = 0; j < gChannels; j++) {
                                 unsigned int index = i * gChannels + j;
                                 tmp[index] = *inBuffer++ / SCALE;
-                                if (tmp[index]>0.5)
+                                if (tmp[index]>0.005)
                                     std::cout << "frame = " << seq*gFPP + i << "\t channel = " << j
                                           << "\t val = " << tmp[index] << std::endl;
                             }
@@ -113,10 +113,7 @@ void UDP::run() {
                     for (unsigned int j = 0; j < gChannels; j++) {
                         unsigned int index = i * gChannels + j;
                         //                    tmp[index] = *inBuffer++ / SCALE;
-                        tmp[index] = ((i%30)==0) ? 1.0 : 0.0;
-//                        std::cout << "frame = " << index + i << "\tchannel = " <<
-//                                     j
-//                                  << "\tval = " << tmp[i] << std::endl;
+                        tmp[index] = ((i%30)==0) ? 0.0 : 0.0;
                          *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
                     }
                 }
