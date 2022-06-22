@@ -1,10 +1,10 @@
 #include "udp.h"
 #include <iostream>
 #include <cstring>
-#include "globals.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/types.h>
+
 UDP::UDP()
 {
     mRcv = false;
@@ -16,6 +16,8 @@ UDP::UDP()
     mHeader.BitResolution = (uint8_t)16;
     mHeader.NumIncomingChannelsFromNet = (uint8_t)2;
     mHeader.NumOutgoingChannelsToNet = (uint8_t)2;
+    mZeros.resize(audioDataLen);
+    mZeros.fill(0,audioDataLen);
     int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
     mBuf.resize(packetDataLen);
     mBuf.fill(0,packetDataLen);
@@ -83,20 +85,27 @@ void UDP::run() {
                     seq = mHeader.SeqNumber;
                     std::cout << "UDP rcv: packet = " << seq << std::endl;
                     if (true) { // DSP block
-                        MY_TYPE *inBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);                         MY_TYPE *outBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
-                        double tmp[gFPP * gChannels];
+                        inBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);                         MY_TYPE *outBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
+//                        double tmp[gFPP * gChannels];
+
+// from network
                         for (unsigned int i = 0; i < gFPP; i++) {
                             for (unsigned int j = 0; j < gChannels; j++) {
                                 unsigned int index = i * gChannels + j;
-                                tmp[index] = *inBuffer++ / SCALE;
-                                if (tmp[index]>0.005)
-                                    std::cout << "frame = " << seq*gFPP + i << "\t channel = " << j
-                                          << "\t val = " << tmp[index] << std::endl;
+//                                gTmpAudio[index] = *inBuffer++ / SCALE;
                             }
                         }
+// in audio callback
+//                        for (unsigned int i = 0; i < nBufferFrames; i++) {
+//                          for (unsigned int j = 0; j < gChannels; j++) {
+//                            unsigned int index = i * gChannels + j;
+//                            *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
+//                          }
+//                        }
+
                     }
                 }
-                msleep(1);
+                usleep(1);
             }
         } else { // sender
             seq++;
@@ -134,6 +143,13 @@ void UDP::run() {
     }
     sock.close();
 }
+MY_TYPE * UDP::mostRecentPacket(int afterPacket) {
+    if (mHeader.SeqNumber>afterPacket)
+    return inBuffer;
+    else {
+        return (MY_TYPE *)mZeros.data();
+    }
+};
 
 void UDP::stop()
 {

@@ -4,6 +4,7 @@
 #include <QThread>
 #include <QUdpSocket>
 #include <QHostInfo>
+#include "globals.h"
 
 struct HeaderStruct {
    public:
@@ -24,14 +25,17 @@ public:
     void pause();
     void stop();
     void setRcv();
+    MY_TYPE *mostRecentPacket(int afterPacket);
 private:
     virtual void run();
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
     int mPeerPort;
     QByteArray mBuf;
+    QByteArray mZeros;
     bool mStop;
     bool mRcv; // else Send
+    MY_TYPE *inBuffer;
 };
 
 #endif // UDP_H

@@ -2,20 +2,29 @@ QT       += core gui network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
+DEFINES += RT_AUDIO
 CONFIG += c++11
+
+# pkg-config is required for building with system-provided rtaudio
+CONFIG += link_pkgconfig
+PKGCONFIG += rtaudio
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    ../hacktrip/duplex.cpp \
+    hacktrip.cpp \
     main.cpp \
     mainwindow.cpp \
     tcp.cpp \
     udp.cpp
 
 HEADERS += \
+    ../hacktrip/duplex.h \
     globals.h \
+    hacktrip.h \
     mainwindow.h \
     tcp.h \
     udp.h
