@@ -6,6 +6,7 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    ht = new HackTrip();
 }
 
 MainWindow::~MainWindow()
@@ -16,12 +17,12 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_connectButton_clicked()
 {
-//    hacktrip->setup();
+    ht->contactServer();
 }
 
 void MainWindow::on_sendAutioButton_clicked()
 {
-//    hacktrip->start();
+    ht->start();
 }
 
 void MainWindow::on_quitButton_clicked()

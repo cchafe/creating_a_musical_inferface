@@ -1,8 +1,11 @@
-QT       += core gui
+QT       += core gui network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
+# pkg-config is required for building with system-provided rtaudio
+CONFIG += link_pkgconfig
+PKGCONFIG += rtaudio
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
