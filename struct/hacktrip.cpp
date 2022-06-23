@@ -7,6 +7,13 @@ HackTrip::HackTrip()
     duplex(0); // use the default audio interface
 }
 
+HackTrip:: ~HackTrip() {
+    delete mAudio;
+    delete m_adac;
+    delete mUdpSend;
+    delete mUdpRcv;
+}
+
 void HackTrip::duplex(int device)
 {
     m_channels = mChannels;
@@ -49,19 +56,19 @@ void HackTrip::contactServer()
 
 void HackTrip::start()
 {
-    mUdpSend = new UDP();
+//    mUdpSend = new UDP();
     mUdpRcv = new UDP(true);
-    mUdpSend->start();
-    mUdpRcv->start();
-    mAudio = new Audio(m_adac);
-    mAudio->start();
+//    mUdpSend->start();
+//    mUdpRcv->start();
+    mAudio = new Audio(m_adac, mUdpRcv);
+    mAudio->start(mUdpRcv);
 }
 
 int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                   unsigned int nBufferFrames, double streamTime,
                                   RtAudioStreamStatus status, void *arg)
 {
-    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
+//    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
     return static_cast<Audio*>(arg)->networkAudio_callback(
                 outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
@@ -70,28 +77,37 @@ int Audio::networkAudio_callback
 (void *outputBuffer, void *inputBuffer,
  unsigned int nBufferFrames, double streamTime,
  RtAudioStreamStatus status, void *bytesInfoFromStreamOpen) {
-    std::cout << "Stream !!!!!!!!!!!!!!!!" << std::endl;
-    //    if (false) { // DSP block
-    //        MY_TYPE *inBuffer = mUdpRcv->mostRecentPacket(500);
-    //        MY_TYPE *outBuffer = (MY_TYPE *)outputBuffer;
-    //        double tmp[nBufferFrames * 2];
-    //        for (unsigned int i = 0; i < nBufferFrames; i++) {
-    //            for (unsigned int j = 0; j < 2; j++) {
-    //                unsigned int index = i * 2 + j;
-    //                        tmp[index] = *inBuffer++ / SCALE;
-    //                        //      std::cout << "frame = " << frameCounter + i << "\tchannel = " <<
-    //                        //      j
-    //                        //                << "\tval = " << tmp[i] << std::endl;
-    //                        tmp[index] *= 0.3;
-    //                        tmp[index] = (j == 1) ? tmp[index - 1] : tmp[index];
-    //                *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
-    //            }
-    //        }
-    //    }
+    std::cout << "audio callback" << " nBufferFrames " << nBufferFrames << std::endl;
+        if (true) { // DSP block
+//            MY_TYPE *inBuffer = mUdpRcv->mostRecentPacket(-1);
+//            mUdpRcv->test();
+            // this should be a pull
+            QByteArray mZerosx;
+            int audioDataLen = 64*2*2;
+            mZerosx.resize(audioDataLen);
+            mZerosx.fill(0,audioDataLen);
+            MY_TYPE *inBuffer = (MY_TYPE *)mZerosx.data();
+            std::cout << "Stream xxxxxxxxxxxx" << std::endl;
+            MY_TYPE *outBuffer = (MY_TYPE *)outputBuffer;
+            double tmp[nBufferFrames * 2];
+            for (unsigned int i = 0; i < nBufferFrames; i++) {
+                for (unsigned int j = 0; j < 2; j++) {
+                    unsigned int index = i * 2 + j;
+                            tmp[index] = *inBuffer++ / SCALE;
+                            //      std::cout << "frame = " << frameCounter + i << "\tchannel = " <<
+                            //      j
+                            //                << "\tval = " << tmp[i] << std::endl;
+                            tmp[index] *= 0.3;
+                            tmp[index] = (j == 1) ? tmp[index - 1] : tmp[index];
+                    *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
+                }
+            }
+        }
     return 0;
 }
 
-void Audio::run() {
+void Audio::start(UDP *udpRcv) {
+    mUdpRcv = udpRcv;
     if (mRTaudio->isStreamOpen() == false) {
         std::cout << "\nCouldn't open audio device streams!\n";
         exit(1);
@@ -101,19 +117,13 @@ void Audio::run() {
     }
     std::cout << "\nAudio stream start" << std::endl;
     mRTaudio->startStream();
-    double localStreamTime = 0.0;
-    mStop = false;
-    while (!mStop) {
-        msleep(100);
-    };
-    if (mRTaudio->isStreamOpen())
-        mRTaudio->closeStream();
-    std::cout << "\nAudio stream closed" << std::endl;
 }
 
 void Audio::stop()
 {
-    mStop = true;
+    if (mRTaudio->isStreamOpen())
+        mRTaudio->closeStream();
+    std::cout << "\nAudio stream closed" << std::endl;
 }
 
 void HackTrip::stop()
@@ -123,7 +133,6 @@ void HackTrip::stop()
     mUdpSend->stop();
     mUdpSend->wait();
     mAudio->stop();
-    mAudio->wait();
 }
 
 void TCP::connectToHost()
@@ -179,8 +188,6 @@ void UDP::run() {
         mHeader.BitResolution = (uint8_t)16;
         mHeader.NumIncomingChannelsFromNet = (uint8_t)2;
         mHeader.NumOutgoingChannelsToNet = (uint8_t)2;
-        mZeros.resize(audioDataLen);
-        mZeros.fill(0,audioDataLen);
         int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
         mBuf.resize(packetDataLen);
         mBuf.fill(0,packetDataLen);
@@ -242,6 +249,7 @@ void UDP::run() {
                     seq = mHeader.SeqNumber;
                     std::cout << "UDP rcv: packet = " << seq << std::endl;
                     if (true) { // DSP block
+                        // this should be a push
                         inBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);                         MY_TYPE *outBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
                         //                        double tmp[gFPP * gChannels];
 
@@ -262,7 +270,7 @@ void UDP::run() {
 
                     }
                 }
-                usleep(1);
+                msleep(1);
             }
         } else { // sender
             seq++;
@@ -306,10 +314,14 @@ void UDP::stop()
     mStop = true;
 }
 
-MY_TYPE * UDP::mostRecentPacket(int afterPacket) {
-    if (mHeader.SeqNumber>afterPacket)
+MY_TYPE * UDP::mostRecentPacket(int afterPacket) { // -1 = zeros
+    if ((afterPacket!=-1)&&(mHeader.SeqNumber>afterPacket))
         return inBuffer;
     else {
-        return (MY_TYPE *)mZeros.data();
+        return (MY_TYPE *)mZeros->data();
     }
+};
+
+void UDP::test() {
+    std::cout << "test " << mZeros->size() << std::endl;
 };

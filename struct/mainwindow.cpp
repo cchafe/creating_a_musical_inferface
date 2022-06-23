@@ -27,6 +27,6 @@ void MainWindow::on_sendAutioButton_clicked()
 
 void MainWindow::on_quitButton_clicked()
 {
-//    hacktrip->stop();
+    ht->stop();
     qApp->quit();
 }

@@ -42,7 +42,14 @@ struct HeaderStruct {
 class UDP : public QThread
 {
 public:
-    UDP(bool rcv = false):mRcv(rcv){};
+    UDP(bool rcv = false):mRcv(rcv){
+        int audioDataLen = 64*2*2;
+        mZeros = new QByteArray();
+        mZeros->resize(audioDataLen);
+        mZeros->fill(0,audioDataLen);
+
+    };
+    void test();
     void stop();
     MY_TYPE *mostRecentPacket(int afterPacket);
 private:
@@ -51,16 +58,23 @@ private:
     QHostAddress mPeerAddr;
     int mPeerPort;
     QByteArray mBuf;
-    QByteArray mZeros;
     bool mStop;
     bool mRcv; // else Send
     MY_TYPE *inBuffer;
+    QByteArray *mZeros;
 };
 
-class Audio : public QThread
+class Audio
 {
 public:
-    Audio(RtAudio *rtaudio) : mRTaudio(rtaudio) {};
+    Audio(RtAudio *rtaudio, UDP * udpRcv) : mRTaudio(rtaudio)
+      ,  mUdpRcv(udpRcv) {
+        mUdpRcv->test();
+        int audioDataLen = 64*2*2;
+        mZeros.resize(audioDataLen);
+        mZeros.fill(0,audioDataLen);
+    };
+    void start(UDP *udpRcv);
     void stop();
     MY_TYPE *mostRecentPacket(int afterPacket);
     static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
@@ -69,16 +83,18 @@ public:
 private:
     RtAudio *mRTaudio;
     bool mStop;
-    virtual void run();
     int networkAudio_callback(void *outputBuffer, void *inputBuffer,
                         unsigned int nBufferFrames, double streamTime,
                         RtAudioStreamStatus status, void *bytesInfoFromStreamOpen);
+    QByteArray mZeros;
+    UDP * mUdpRcv;
 };
 
 class HackTrip
 {
 public:
     HackTrip();
+    ~HackTrip();
     void contactServer();
     void start();
     void stop();

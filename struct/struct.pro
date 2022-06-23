@@ -14,11 +14,13 @@ PKGCONFIG += rtaudio
 SOURCES += \
     hacktrip.cpp \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    regulator.cpp
 
 HEADERS += \
     hacktrip.h \
-    mainwindow.h
+    mainwindow.h \
+    regulator.h
 
 FORMS += \
     mainwindow.ui
