@@ -5,8 +5,9 @@
 #include <rtaudio/RtAudio.h>
 #include <QThread>
 #include <QHostInfo>
+#include "regulator.h"
 
-const QString gServer = "15.181.16.36";
+const QString gServer = "54.241.143.103";
 //const QString gServer = "jackloop64.stanford.edu";
 //const QString gServer = "cmn55.stanford.edu";
 //const QString gServer = "cmn9.stanford.edu";
@@ -28,7 +29,7 @@ public:
 };
 
 struct HeaderStruct {
-   public:
+public:
     // watch out for alignment...
     uint64_t TimeStamp;     ///< Time Stamp
     uint16_t SeqNumber;     ///< Sequence Number
@@ -42,11 +43,15 @@ struct HeaderStruct {
 class UDP : public QThread
 {
 public:
-    UDP(bool rcv = false):mRcv(rcv){
+    UDP(bool rcv = false, Regulator * reg = 0)
+        : mRcv(rcv)
+        , mRegFromHackTrip(reg)
+    {
         int audioDataLen = 64*2*2;
         mZeros = new QByteArray();
         mZeros->resize(audioDataLen);
         mZeros->fill(0,audioDataLen);
+        mPhasor.resize(2, 0.0); //HackTrip::mChannels
 
     };
     void test();
@@ -62,13 +67,18 @@ private:
     bool mRcv; // else Send
     MY_TYPE *inBuffer;
     QByteArray *mZeros;
+    Regulator * mRegFromHackTrip;
+    std::vector<double> mPhasor;
 };
 
 class Audio
 {
 public:
-    Audio(RtAudio *rtaudio, UDP * udpRcv) : mRTaudio(rtaudio)
-      ,  mUdpRcv(udpRcv) {
+    Audio(RtAudio *rtaudio, UDP * udpRcv, Regulator * reg)
+        : mRTaudio(rtaudio)
+        , mUdpRcv(udpRcv)
+        , mRegFromHackTrip(reg)
+    {
         mUdpRcv->test();
         int audioDataLen = 64*2*2;
         mZeros.resize(audioDataLen);
@@ -84,10 +94,11 @@ private:
     RtAudio *mRTaudio;
     bool mStop;
     int networkAudio_callback(void *outputBuffer, void *inputBuffer,
-                        unsigned int nBufferFrames, double streamTime,
-                        RtAudioStreamStatus status, void *bytesInfoFromStreamOpen);
+                              unsigned int nBufferFrames, double streamTime,
+                              RtAudioStreamStatus status, void *bytesInfoFromStreamOpen);
     QByteArray mZeros;
     UDP * mUdpRcv;
+    Regulator * mRegFromHackTrip;
 };
 
 class HackTrip
@@ -99,6 +110,7 @@ public:
     void start();
     void stop();
 private:
+    Regulator * mReg;
     void duplex(int device);
     // these are identical to the rtaudio/tests/Duplex.cpp example
     // except with m_ prepended
@@ -110,10 +122,11 @@ private:
     RtAudio::StreamOptions options;
     const QString mPort = "4464";
     static const int mAudioPort = 4465;
-    static const int mFPP = 64;
+    static const int mFPP = 128;
     static const int mSocketWaitMs = 1500;
     static const int mSampleRate = 48000;
     static const int mChannels = 2;
+    static const int mBufferQueueLength = 5;
     friend class TCP;
     friend class UDP;
     friend class Audio;

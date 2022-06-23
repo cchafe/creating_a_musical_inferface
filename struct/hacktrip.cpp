@@ -5,6 +5,17 @@
 HackTrip::HackTrip()
 {
     duplex(0); // use the default audio interface
+    mReg = new Regulator(mChannels, 2, mFPP, mBufferQueueLength);
+}
+
+void HackTrip::start()
+{
+    mUdpSend = new UDP();
+    mUdpRcv = new UDP(true, mReg);
+    mUdpSend->start();
+    mUdpRcv->start();
+    mAudio = new Audio(m_adac, mUdpRcv, mReg);
+    mAudio->start(mUdpRcv);
 }
 
 HackTrip:: ~HackTrip() {
@@ -43,9 +54,9 @@ void HackTrip::duplex(int device)
     options.flags = RTAUDIO_SCHEDULE_REALTIME; // use realtime priority if it's available
     unsigned int dummy = mFPP;
     m_adac->openStream(&m_oParams, &m_iParams,
-                         FORMAT, mSampleRate, &dummy,
-                         &Audio::wrapperProcessCallback,
-                         (void *)this, &options);
+                       FORMAT, mSampleRate, &dummy,
+                       &Audio::wrapperProcessCallback,
+                       (void *)this, &options);
 }
 
 void HackTrip::contactServer()
@@ -54,21 +65,11 @@ void HackTrip::contactServer()
     mTcpClient.sendToHost();
 }
 
-void HackTrip::start()
-{
-//    mUdpSend = new UDP();
-    mUdpRcv = new UDP(true);
-//    mUdpSend->start();
-//    mUdpRcv->start();
-    mAudio = new Audio(m_adac, mUdpRcv);
-    mAudio->start(mUdpRcv);
-}
-
 int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                   unsigned int nBufferFrames, double streamTime,
                                   RtAudioStreamStatus status, void *arg)
 {
-//    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
+    //    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
     return static_cast<Audio*>(arg)->networkAudio_callback(
                 outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
@@ -77,32 +78,36 @@ int Audio::networkAudio_callback
 (void *outputBuffer, void *inputBuffer,
  unsigned int nBufferFrames, double streamTime,
  RtAudioStreamStatus status, void *bytesInfoFromStreamOpen) {
-    std::cout << "audio callback" << " nBufferFrames " << nBufferFrames << std::endl;
-        if (true) { // DSP block
-//            MY_TYPE *inBuffer = mUdpRcv->mostRecentPacket(-1);
-//            mUdpRcv->test();
-            // this should be a pull
-            QByteArray mZerosx;
-            int audioDataLen = 64*2*2;
-            mZerosx.resize(audioDataLen);
-            mZerosx.fill(0,audioDataLen);
-            MY_TYPE *inBuffer = (MY_TYPE *)mZerosx.data();
-            std::cout << "Stream xxxxxxxxxxxx" << std::endl;
-            MY_TYPE *outBuffer = (MY_TYPE *)outputBuffer;
-            double tmp[nBufferFrames * 2];
-            for (unsigned int i = 0; i < nBufferFrames; i++) {
-                for (unsigned int j = 0; j < 2; j++) {
-                    unsigned int index = i * 2 + j;
-                            tmp[index] = *inBuffer++ / SCALE;
-                            //      std::cout << "frame = " << frameCounter + i << "\tchannel = " <<
-                            //      j
-                            //                << "\tval = " << tmp[i] << std::endl;
-                            tmp[index] *= 0.3;
-                            tmp[index] = (j == 1) ? tmp[index - 1] : tmp[index];
-                    *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
-                }
-            }
-        }
+    //        std::cout << "audio callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
+    if (true) { // DSP block
+        //            MY_TYPE *inBuffer = mUdpRcv->mostRecentPacket(-1);
+        //            mUdpRcv->test();
+        // this should be a pull
+
+        mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
+        //            mRegFromHackTrip->dummyPacket((int8_t *)outputBuffer);
+
+        //            QByteArray mZerosx;
+        //            int audioDataLen = 64*2*2;
+        //            mZerosx.resize(audioDataLen);
+        //            mZerosx.fill(0,audioDataLen);
+        //            MY_TYPE *inBuffer = (MY_TYPE *)mZerosx.data();
+        //            std::cout << "Stream xxxxxxxxxxxx" << std::endl;
+        //            MY_TYPE *outBuffer = (MY_TYPE *)outputBuffer;
+        //            double tmp[nBufferFrames * 2];
+        //            for (unsigned int i = 0; i < nBufferFrames; i++) {
+        //                for (unsigned int j = 0; j < 2; j++) {
+        //                    unsigned int index = i * 2 + j;
+        //                            tmp[index] = *inBuffer++ / SCALE;
+        //                            //      std::cout << "frame = " << frameCounter + i << "\tchannel = " <<
+        //                            //      j
+        //                            //                << "\tval = " << tmp[i] << std::endl;
+        //                            tmp[index] *= 0.3;
+        //                            tmp[index] = (j == 1) ? tmp[index - 1] : tmp[index];
+        //                    *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
+        //                }
+        //            }
+    }
     return 0;
 }
 
@@ -241,32 +246,36 @@ void UDP::run() {
             if (sock.hasPendingDatagrams()) {
                 //                std::cout << "UDP rcv: pending bytes = " << sock.pendingDatagramSize() << std::endl;
                 int len = sock.readDatagram(mBuf.data(), mBuf.size());
-                std::cout << "UDP rcv: bytes = " << len << std::endl;
+                //                std::cout << "UDP rcv: bytes = " << len << std::endl;
                 if (len != mBuf.size())
                     std::cout << "UDP rcv: not full packet (" << len << ") should be " << mBuf.size() << std::endl;
                 else {
                     memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
                     seq = mHeader.SeqNumber;
-                    std::cout << "UDP rcv: packet = " << seq << std::endl;
+                    if (seq%500 == 0)
+                        std::cout << "UDP rcv: seq = " << seq << std::endl;
                     if (true) { // DSP block
                         // this should be a push
-                        inBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);                         MY_TYPE *outBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
-                        //                        double tmp[gFPP * gChannels];
+                        inBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
+                        mRegFromHackTrip->shimFPP((int8_t *)inBuffer, len, seq);
+                        //MY_TYPE *outBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
 
-                        // from network
-                        for (unsigned int i = 0; i < HackTrip::mFPP; i++) {
-                            for (unsigned int j = 0; j < HackTrip::mChannels; j++) {
-                                unsigned int index = i * HackTrip::mChannels + j;
-                                //                                gTmpAudio[index] = *inBuffer++ / SCALE;
-                            }
-                        }
-                        // in audio callback
-                        //                        for (unsigned int i = 0; i < nBufferFrames; i++) {
-                        //                          for (unsigned int j = 0; j < gChannels; j++) {
-                        //                            unsigned int index = i * gChannels + j;
-                        //                            *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
-                        //                          }
+                        //                        //                        double tmp[gFPP * gChannels];
+
+                        //                        // from network
+                        //                        for (unsigned int i = 0; i < HackTrip::mFPP; i++) {
+                        //                            for (unsigned int j = 0; j < HackTrip::mChannels; j++) {
+                        //                                unsigned int index = i * HackTrip::mChannels + j;
+                        //                                //                                gTmpAudio[index] = *inBuffer++ / SCALE;
+                        //                            }
                         //                        }
+                        //                        // in audio callback
+                        //                        //                        for (unsigned int i = 0; i < nBufferFrames; i++) {
+                        //                        //                          for (unsigned int j = 0; j < gChannels; j++) {
+                        //                        //                            unsigned int index = i * gChannels + j;
+                        //                        //                            *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
+                        //                        //                          }
+                        //                        //                        }
 
                     }
                 }
@@ -287,14 +296,24 @@ void UDP::run() {
                     for (unsigned int j = 0; j < HackTrip::mChannels; j++) {
                         unsigned int index = i * HackTrip::mChannels + j;
                         //                    tmp[index] = *inBuffer++ / SCALE;
-                        tmp[index] = ((i%30)==0) ? 0.0 : 0.0;
+                        tmp[index] = ((i%3)==0) ? 0.00 : 0.0;
+
+                        // diagnostic output
+                        /////////////////////
+                        if (true) {
+                            if (j) tmp[index] = (0.7 * sin(mPhasor[j]));
+                            mPhasor[j] += (!j) ? 0.1 : 0.11;
+                        }
+                        /////////////////////
+
                         *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
                     }
                 }
             }
             sock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
-            //            std::cout << "UDP send: packet = " << seq << std::endl;
-            msleep(5);
+            if (seq%500 == 0)
+                std::cout << "UDP send: packet = " << seq << std::endl;
+            usleep(2666);
         }
     }
     if (!mRcv) {

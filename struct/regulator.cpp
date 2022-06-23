@@ -265,9 +265,13 @@ void Regulator::setFPPratio()
 //*******************************************************************************
 void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
 {
+//    std::cout << " shimFPP seq = " << seq_num;
     if (seq_num != -1) {
         if (!mFPPratioIsSet) {  // first peer packet
-            mPeerFPP = len / (mNumChannels * mBitResolutionMode);
+//            mPeerFPP = len / (mNumChannels * mBitResolutionMode);
+            mPeerFPP = 128;
+            qDebug() << "shimFPP mPeerFPP hardwired with"
+                     << mPeerFPP << " for testing";
             // bufstrategy 1 autoq mode overloads qLen with negative val
             // creates this ugly code
             if (mMsecTolerance < 0) {  // handle -q auto or, for example, -q auto10
@@ -334,7 +338,7 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
 //*******************************************************************************
 void Regulator::pushPacket(const int8_t* buf, int seq_num)
 {
-    QMutexLocker locker(&mMutex);
+//    QMutexLocker locker(&mMutex);
     seq_num %= mModSeqNum;
     // if (seq_num==0) return;   // impose regular loss
     mIncomingTiming[seq_num] =
@@ -345,9 +349,18 @@ void Regulator::pushPacket(const int8_t* buf, int seq_num)
 };
 
 //*******************************************************************************
+void Regulator::dummyPacket(int8_t* buf)
+{
+//    QMutexLocker locker(&mMutex);
+    memcpy(buf, mXfrBuffer, mBytes);
+    std::cout << "dummyPacket \n";
+};
+
+//*******************************************************************************
 void Regulator::pullPacket(int8_t* buf)
 {
-    QMutexLocker locker(&mMutex);
+//    QMutexLocker locker(&mMutex);
+//    std::cout << "pullPacket \n";
     mSkip = 0;
     if ((mLastSeqNumIn == -1) || (!mFPPratioIsSet)) {
         goto ZERO_OUTPUT;
