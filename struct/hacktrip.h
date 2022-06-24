@@ -7,7 +7,7 @@
 #include <QHostInfo>
 #include "regulator.h"
 
-const QString gServer = "54.241.143.103";
+const QString gServer = "54.193.131.283";
 //const QString gServer = "jackloop64.stanford.edu";
 //const QString gServer = "cmn55.stanford.edu";
 //const QString gServer = "cmn9.stanford.edu";
@@ -71,33 +71,34 @@ private:
     std::vector<double> mPhasor;
 };
 
+
 class Audio
 {
 public:
-    Audio(RtAudio *rtaudio, UDP * udpRcv, Regulator * reg)
-        : mRTaudio(rtaudio)
-        , mUdpRcv(udpRcv)
-        , mRegFromHackTrip(reg)
-    {
-        mUdpRcv->test();
-        int audioDataLen = 64*2*2;
-        mZeros.resize(audioDataLen);
-        mZeros.fill(0,audioDataLen);
-    };
-    void start(UDP *udpRcv);
+    Audio(Regulator * reg);
+    ~Audio();
+    void start();
     void stop();
     MY_TYPE *mostRecentPacket(int afterPacket);
     static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                       unsigned int nBufferFrames, double streamTime,
                                       RtAudioStreamStatus status, void *arg);
 private:
+    // these are identical to the rtaudio/tests/Duplex.cpp example
+    // except with m_ prepended
+    unsigned int m_channels;
+    unsigned int m_fs;
+    unsigned int m_oDevice, m_iDevice, m_iOffset, m_oOffset;
+    RtAudio *m_adac;
+    RtAudio::StreamParameters m_iParams, m_oParams;
+    RtAudio::StreamOptions options;
     RtAudio *mRTaudio;
+    void duplex(int device);
     bool mStop;
     int networkAudio_callback(void *outputBuffer, void *inputBuffer,
                               unsigned int nBufferFrames, double streamTime,
                               RtAudioStreamStatus status, void *bytesInfoFromStreamOpen);
     QByteArray mZeros;
-    UDP * mUdpRcv;
     Regulator * mRegFromHackTrip;
 };
 
@@ -111,15 +112,6 @@ public:
     void stop();
 private:
     Regulator * mReg;
-    void duplex(int device);
-    // these are identical to the rtaudio/tests/Duplex.cpp example
-    // except with m_ prepended
-    unsigned int m_channels;
-    unsigned int m_fs;
-    unsigned int m_oDevice, m_iDevice, m_iOffset, m_oOffset;
-    RtAudio *m_adac;
-    RtAudio::StreamParameters m_iParams, m_oParams;
-    RtAudio::StreamOptions options;
     const QString mPort = "4464";
     static const int mAudioPort = 4465;
     static const int mFPP = 128;
@@ -130,7 +122,7 @@ private:
     friend class TCP;
     friend class UDP;
     friend class Audio;
-    TCP mTcpClient;
+//    TCP mTcpClient;
     UDP *mUdpSend;
     UDP *mUdpRcv;
     Audio *mAudio;
