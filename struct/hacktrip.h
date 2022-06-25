@@ -56,7 +56,6 @@ public:
     };
     void test();
     void stop();
-    MY_TYPE *mostRecentPacket(int afterPacket);
 private:
     virtual void run();
     HeaderStruct mHeader;
@@ -79,7 +78,7 @@ public:
     ~Audio();
     void start();
     void stop();
-    MY_TYPE *mostRecentPacket(int afterPacket);
+    int test_cpp();
     static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                       unsigned int nBufferFrames, double streamTime,
                                       RtAudioStreamStatus status, void *arg);
@@ -98,7 +97,6 @@ private:
     int networkAudio_callback(void *outputBuffer, void *inputBuffer,
                               unsigned int nBufferFrames, double streamTime,
                               RtAudioStreamStatus status, void *bytesInfoFromStreamOpen);
-    QByteArray mZeros;
     Regulator * mRegFromHackTrip;
 };
 
@@ -114,7 +112,7 @@ private:
     Regulator * mReg;
     const QString mPort = "4464";
     static const int mAudioPort = 4465;
-    static const int mFPP = 128;
+    static const int mFPP = 256;
     static const int mSocketWaitMs = 1500;
     static const int mSampleRate = 48000;
     static const int mChannels = 2;
@@ -122,7 +120,7 @@ private:
     friend class TCP;
     friend class UDP;
     friend class Audio;
-//    TCP mTcpClient;
+    //    TCP mTcpClient;
     UDP *mUdpSend;
     UDP *mUdpRcv;
     Audio *mAudio;

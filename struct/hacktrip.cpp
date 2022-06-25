@@ -9,22 +9,31 @@
 HackTrip::HackTrip()
 {
     mReg = new Regulator(mChannels, 2, mFPP, mBufferQueueLength);
+    mAudio = new Audio(mReg); // calls duplex
 //    gPhasor.resize(2, 0.0); //HackTrip::mChannels
 }
 
 void HackTrip::start()
 {
-    mUdpSend = new UDP();
-    mUdpRcv = new UDP(true, mReg);
-    mAudio = new Audio(mReg);
-    mUdpSend->start();
-    mUdpRcv->start();
+//    mUdpSend = new UDP();
+//    mUdpRcv = new UDP(true, mReg);
+//    mUdpSend->start();
+//    mUdpRcv->start();
     mAudio->start();
+}
+
+void HackTrip::stop()
+{
+//    mUdpRcv->stop();
+//    mUdpRcv->wait();
+//    mUdpSend->stop();
+//    mUdpSend->wait();
+//    mAudio->stop();
 }
 
 HackTrip:: ~HackTrip() {
     delete mReg;
-    //    delete mAudio;
+        delete mAudio;
     //    delete mUdpSend;
     //    delete mUdpRcv;
 }
@@ -32,48 +41,9 @@ HackTrip:: ~HackTrip() {
 Audio::Audio(Regulator * reg)
     : mRegFromHackTrip(reg)
 {
-    int audioDataLen = 64*2*2;
-    mZeros.resize(audioDataLen);
-    mZeros.fill(0,audioDataLen);
-    duplex(0); // use the default audio interface
 };
 
 Audio:: ~Audio() {
-    delete m_adac;
-}
-
-void Audio::duplex(int device)
-{
-    m_channels = HackTrip::mChannels;
-    m_fs = HackTrip::mSampleRate;
-    m_iDevice = m_oDevice = device;
-    m_iOffset = m_oOffset = 0; // first channel
-    // copy all setup into all stream info
-    m_iParams.deviceId = m_iDevice;
-    m_iParams.nChannels = m_channels;
-    m_iParams.firstChannel = m_iOffset;
-    m_oParams.deviceId = m_oDevice;
-    m_oParams.nChannels = m_channels;
-    m_oParams.firstChannel = m_oOffset;
-    m_adac = new RtAudio();
-    if (m_adac->getDeviceCount() < 1) {
-        std::cout << "\nNo audio devices found!\n";
-        exit(1);
-    } else {
-        std::cout << "using default audio interface device\n";
-        std::cout << m_adac->getDeviceInfo(device).name
-                  << "\tfor input and output\n";
-        std::cout << "\tIf another is needed, either change your settings\n";
-        std::cout << "\tor the choice in the code\n";
-        // Let RtAudio print messages to stderr.
-        m_adac->showWarnings(true);
-    }
-    options.flags = RTAUDIO_SCHEDULE_REALTIME; // use realtime priority if it's available
-    unsigned int dummy = HackTrip::mFPP;
-    m_adac->openStream(&m_oParams, &m_iParams,
-                       FORMAT, HackTrip::mSampleRate, &dummy,
-                       &Audio::wrapperProcessCallback,
-                       (void *)this, &options);
 }
 
 void HackTrip::contactServer()
@@ -95,8 +65,8 @@ int Audio::networkAudio_callback
 (void *outputBuffer, void *inputBuffer,
  unsigned int nBufferFrames, double streamTime,
  RtAudioStreamStatus status, void *bytesInfoFromStreamOpen) {
-    //        std::cout << "audio callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
-    if (true) { // DSP block
+            std::cout << "audio callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
+    if (false) { // DSP block
 
         // this should be a pull
         //                mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
@@ -122,7 +92,44 @@ int Audio::networkAudio_callback
     return 0;
 }
 
+void Audio::duplex(int device)
+{
+    m_adac = new RtAudio();
+    if (m_adac->getDeviceCount() < 1) {
+        std::cout << "\nNo audio devices found!\n";
+        exit(1);
+    }
+
+    m_channels = HackTrip::mChannels;
+    m_fs = HackTrip::mSampleRate;
+    m_iDevice = m_oDevice = device;
+    m_iOffset = m_oOffset = 0; // first channel
+    // copy all setup into all stream info
+    m_iParams.deviceId = m_iDevice;
+    m_iParams.nChannels = m_channels;
+    m_iParams.firstChannel = m_iOffset;
+    m_oParams.deviceId = m_oDevice;
+    m_oParams.nChannels = m_channels;
+    m_oParams.firstChannel = m_oOffset;
+    options.flags = RTAUDIO_SCHEDULE_REALTIME; // use realtime priority if it's available
+}
+
 void Audio::start() {
+//    test_cpp();
+    duplex(0); // use the default audio interface
+    std::cout << "using default audio interface device\n";
+    std::cout << m_adac->getDeviceInfo(m_iDevice).name
+              << "\tfor input and output\n";
+    std::cout << "\tIf another is needed, either change your settings\n";
+    std::cout << "\tor the choice in the code\n";
+    // Let RtAudio print messages to stderr.
+    m_adac->showWarnings(true);
+
+    unsigned int dummy = HackTrip::mFPP;
+    m_adac->openStream(&m_oParams, &m_iParams,
+                       FORMAT, HackTrip::mSampleRate, &dummy,
+                       &Audio::wrapperProcessCallback,
+                       (void *)this, &options);
     if (mRTaudio->isStreamOpen() == false) {
         std::cout << "\nCouldn't open audio device streams!\n";
         exit(1);
@@ -131,7 +138,7 @@ void Audio::start() {
                   << " frames" << std::endl;
     }
     std::cout << "\nAudio stream start" << std::endl;
-    mRTaudio->startStream();
+//    mRTaudio->startStream();
 }
 
 void Audio::stop()
@@ -139,15 +146,72 @@ void Audio::stop()
     if (mRTaudio->isStreamOpen())
         mRTaudio->closeStream();
     std::cout << "\nAudio stream closed" << std::endl;
+    delete m_adac;
 }
+int Audio::test_cpp() {
+    std::vector<RtAudio::Api> apis;
+    RtAudio::getCompiledApi( apis );
 
-void HackTrip::stop()
-{
-    mUdpRcv->stop();
-    mUdpRcv->wait();
-    mUdpSend->stop();
-    mUdpSend->wait();
-    mAudio->stop();
+    // ensure the known APIs return valid names
+    std::cout << "API names by identifier (C++):\n";
+    for ( size_t i = 0; i < apis.size() ; ++i ) {
+        const std::string name = RtAudio::getApiName(apis[i]);
+        if (name.empty()) {
+            std::cout << "Invalid name for API " << (int)apis[i] << "\n";
+            exit(1);
+        }
+        const std::string displayName = RtAudio::getApiDisplayName(apis[i]);
+        if (displayName.empty()) {
+            std::cout << "Invalid display name for API " << (int)apis[i] << "\n";
+            exit(1);
+        }
+        std::cout << "* " << (int)apis[i] << " '" << name << "': '" << displayName << "'\n";
+    }
+
+    // ensure unknown APIs return the empty string
+    {
+        const std::string name = RtAudio::getApiName((RtAudio::Api)-1);
+        if (!name.empty()) {
+            std::cout << "Bad string for invalid API '" << name << "'\n";
+            exit(1);
+        }
+        const std::string displayName = RtAudio::getApiDisplayName((RtAudio::Api)-1);
+        if (displayName!="Unknown") {
+            std::cout << "Bad display string for invalid API '" << displayName << "'\n";
+            exit(1);
+        }
+    }
+
+    // try getting API identifier by name
+    std::cout << "API identifiers by name (C++):\n";
+    for ( size_t i = 0; i < apis.size() ; ++i ) {
+        std::string name = RtAudio::getApiName(apis[i]);
+        if ( RtAudio::getCompiledApiByName(name) != apis[i] ) {
+            std::cout << "Bad identifier for API '" << name << "'\n";
+            exit( 1 );
+        }
+        std::cout << "* '" << name << "': " << (int)apis[i] << "\n";
+
+        for ( size_t j = 0; j < name.size(); ++j )
+            name[j] = (j & 1) ? toupper(name[j]) : tolower(name[j]);
+        RtAudio::Api api = RtAudio::getCompiledApiByName(name);
+        if ( api != RtAudio::UNSPECIFIED ) {
+            std::cout << "Identifier " << (int)api << " for invalid API '" << name << "'\n";
+            exit( 1 );
+        }
+    }
+
+    // try getting an API identifier by unknown name
+    {
+        RtAudio::Api api;
+        api = RtAudio::getCompiledApiByName("");
+        if ( api != RtAudio::UNSPECIFIED ) {
+            std::cout << "Bad identifier for unknown API name\n";
+            exit( 1 );
+        }
+    }
+
+    return 0;
 }
 
 void TCP::connectToHost()
@@ -342,14 +406,6 @@ void UDP::stop()
 {
     mStop = true;
 }
-
-MY_TYPE * UDP::mostRecentPacket(int afterPacket) { // -1 = zeros
-    if ((afterPacket!=-1)&&(mHeader.SeqNumber>afterPacket))
-        return inBuffer;
-    else {
-        return (MY_TYPE *)mZeros->data();
-    }
-};
 
 void UDP::test() {
     std::cout << "test " << mZeros->size() << std::endl;
