@@ -6,8 +6,10 @@
 double streamTimePrintIncrement = 1.0; // seconds
 double streamTimePrintTime = 1.0; // seconds
 
-int inout( void *outputBuffer, void *inputBuffer, unsigned int /*nBufferFrames*/,
-           double streamTime, RtAudioStreamStatus status, void *data )
+int inoutGlobal( void *outputBuffer, void *inputBuffer,
+                  unsigned int /*nBufferFrames*/,
+                  double streamTime, RtAudioStreamStatus status,
+                  void *data )
 {
     // Since the number of input and output channels is equal, we can do
     // a simple buffer copy operation here.
@@ -22,7 +24,6 @@ int inout( void *outputBuffer, void *inputBuffer, unsigned int /*nBufferFrames*/
     memcpy( outputBuffer, inputBuffer, *bytes );
     return 0;
 }
-
 // any outside value used inside the callback
 // is here, cannot be a class member
 //std::vector<double> gPhasor;
@@ -113,6 +114,25 @@ int Audio::networkAudio_callback
     return 0;
 }
 
+int Audio::inout( void *outputBuffer, void *inputBuffer,
+                  unsigned int /*nBufferFrames*/,
+                  double streamTime, RtAudioStreamStatus status,
+                  void *data )
+{
+    // Since the number of input and output channels is equal, we can do
+    // a simple buffer copy operation here.
+    if ( status ) std::cout << "Stream over/underflow detected." << std::endl;
+
+    if ( streamTime >= streamTimePrintTime ) {
+        std::cout << "streamTime = " << streamTime << std::endl;
+        streamTimePrintTime += streamTimePrintIncrement;
+    }
+
+    unsigned int *bytes = (unsigned int *) data;
+    memcpy( outputBuffer, inputBuffer, *bytes );
+    return 0;
+}
+
 void Audio::duplex(int device)
 {
 }
@@ -159,7 +179,7 @@ void Audio::start() {
     bufferFrames = HackTrip::mFPP;
     bufferBytes = HackTrip::mFPP*HackTrip::mChannels*2;
     if (m_adac->openStream( &m_oParams, &m_iParams, FORMAT, HackTrip::mSampleRate,
-                            &bufferFrames, &inout, (void*)&bufferBytes, &options ))
+                            &bufferFrames, &inoutGlobal, (void*)&bufferBytes, &options ))
     {
         std::cout << "\nCouldn't open audio device streams!\n";
     }
