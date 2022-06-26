@@ -3,9 +3,19 @@ QT       += core gui network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
-# pkg-config is required for building with system-provided rtaudio
+
+# build needs environment set
+# export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+# or equiv in Projects : Build : Environment
+# in ../rtaudip
+# ./autogen.sh
+# make, make install
+# and needs
+# QMAKE_LFLAGS += '-Wl,-rpath,\'\$//usr/local/lib\''
+
 CONFIG += link_pkgconfig
 PKGCONFIG += rtaudio
+QMAKE_LFLAGS += '-Wl,-rpath,\'\$//usr/local/lib\''
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.

@@ -78,26 +78,34 @@ public:
     ~Audio();
     void start();
     void stop();
-    int test_cpp();
-    static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
-                                      unsigned int nBufferFrames, double streamTime,
-                                      RtAudioStreamStatus status, void *arg);
+    int api_cpp();
+    //    static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
+    //                                      unsigned int nBufferFrames, double streamTime,
+
+    unsigned int bufferFrames;
+    unsigned int bufferBytes;
+    //    RtAudioStreamStatus status, void *arg);
 private:
     // these are identical to the rtaudio/tests/Duplex.cpp example
     // except with m_ prepended
     unsigned int m_channels;
     unsigned int m_fs;
-    unsigned int m_oDevice, m_iDevice, m_iOffset, m_oOffset;
+    unsigned int m_oDevice;
+    unsigned int m_iDevice;
+    unsigned int m_iOffset;
+    unsigned int m_oOffset;
     RtAudio *m_adac;
-    RtAudio::StreamParameters m_iParams, m_oParams;
+    RtAudio::StreamParameters m_iParams;
+    RtAudio::StreamParameters m_oParams;
     RtAudio::StreamOptions options;
     RtAudio *mRTaudio;
     void duplex(int device);
     bool mStop;
     int networkAudio_callback(void *outputBuffer, void *inputBuffer,
                               unsigned int nBufferFrames, double streamTime,
-                              RtAudioStreamStatus status, void *bytesInfoFromStreamOpen);
-    Regulator * mRegFromHackTrip;
+                              RtAudioStreamStatus status,
+                              void *bytesInfoFromStreamOpen);
+    Regulator * mRegFromHackTrip;;
 };
 
 class HackTrip

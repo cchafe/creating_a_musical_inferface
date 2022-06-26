@@ -2,6 +2,27 @@
 #include <QtEndian>
 #include <QUdpSocket>
 
+
+double streamTimePrintIncrement = 1.0; // seconds
+double streamTimePrintTime = 1.0; // seconds
+
+int inout( void *outputBuffer, void *inputBuffer, unsigned int /*nBufferFrames*/,
+           double streamTime, RtAudioStreamStatus status, void *data )
+{
+    // Since the number of input and output channels is equal, we can do
+    // a simple buffer copy operation here.
+    if ( status ) std::cout << "Stream over/underflow detected." << std::endl;
+
+    if ( streamTime >= streamTimePrintTime ) {
+        std::cout << "streamTime = " << streamTime << std::endl;
+        streamTimePrintTime += streamTimePrintIncrement;
+    }
+
+    unsigned int *bytes = (unsigned int *) data;
+    memcpy( outputBuffer, inputBuffer, *bytes );
+    return 0;
+}
+
 // any outside value used inside the callback
 // is here, cannot be a class member
 //std::vector<double> gPhasor;
@@ -10,30 +31,30 @@ HackTrip::HackTrip()
 {
     mReg = new Regulator(mChannels, 2, mFPP, mBufferQueueLength);
     mAudio = new Audio(mReg); // calls duplex
-//    gPhasor.resize(2, 0.0); //HackTrip::mChannels
+    //    gPhasor.resize(2, 0.0); //HackTrip::mChannels
 }
 
 void HackTrip::start()
 {
-//    mUdpSend = new UDP();
-//    mUdpRcv = new UDP(true, mReg);
-//    mUdpSend->start();
-//    mUdpRcv->start();
+    //    mUdpSend = new UDP();
+    //    mUdpRcv = new UDP(true, mReg);
+    //    mUdpSend->start();
+    //    mUdpRcv->start();
     mAudio->start();
 }
 
 void HackTrip::stop()
 {
-//    mUdpRcv->stop();
-//    mUdpRcv->wait();
-//    mUdpSend->stop();
-//    mUdpSend->wait();
-//    mAudio->stop();
+    //    mUdpRcv->stop();
+    //    mUdpRcv->wait();
+    //    mUdpSend->stop();
+    //    mUdpSend->wait();
+    mAudio->stop();
 }
 
 HackTrip:: ~HackTrip() {
     delete mReg;
-        delete mAudio;
+    delete mAudio;
     //    delete mUdpSend;
     //    delete mUdpRcv;
 }
@@ -48,24 +69,24 @@ Audio:: ~Audio() {
 
 void HackTrip::contactServer()
 {
-//    mTcpClient.connectToHost();
-//    mTcpClient.sendToHost();
+    //    mTcpClient.connectToHost();
+    //    mTcpClient.sendToHost();
 }
 
-int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
-                                  unsigned int nBufferFrames, double streamTime,
-                                  RtAudioStreamStatus status, void *arg)
-{
-    //    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
-    return static_cast<Audio*>(arg)->networkAudio_callback(
-                outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
-}
+//int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
+//                                  unsigned int nBufferFrames, double streamTime,
+//                                  RtAudioStreamStatus status, void *arg)
+//{
+//    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
+//    return static_cast<Audio*>(arg)->networkAudio_callback(
+//                outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
+//}
 
 int Audio::networkAudio_callback
 (void *outputBuffer, void *inputBuffer,
  unsigned int nBufferFrames, double streamTime,
  RtAudioStreamStatus status, void *bytesInfoFromStreamOpen) {
-            std::cout << "audio callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
+    std::cout << "audio callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
     if (false) { // DSP block
 
         // this should be a pull
@@ -81,8 +102,8 @@ int Audio::networkAudio_callback
             for (unsigned int j = 0; j < 2; j++) {
                 unsigned int index = i * 2 + j;
                 tmp[index] = *inBuffer++ / SCALE; // input signals
-//                tmp[index] = (0.7 * sin(gPhasor[j])); // sine output
-//                gPhasor[j] += (!j) ? 0.1 : 0.11;
+                //                tmp[index] = (0.7 * sin(gPhasor[j])); // sine output
+                //                gPhasor[j] += (!j) ? 0.1 : 0.11;
                 tmp[index] *= 0.3;
                 tmp[index] = (j == 1) ? tmp[index - 1] : tmp[index]; // left overwrites right
                 *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
@@ -94,6 +115,11 @@ int Audio::networkAudio_callback
 
 void Audio::duplex(int device)
 {
+}
+
+void Audio::start() {
+    //    api_cpp();
+    //    duplex(0); // use the default audio interface
     m_adac = new RtAudio();
     if (m_adac->getDeviceCount() < 1) {
         std::cout << "\nNo audio devices found!\n";
@@ -102,7 +128,7 @@ void Audio::duplex(int device)
 
     m_channels = HackTrip::mChannels;
     m_fs = HackTrip::mSampleRate;
-    m_iDevice = m_oDevice = device;
+    m_iDevice = m_oDevice = 0;
     m_iOffset = m_oOffset = 0; // first channel
     // copy all setup into all stream info
     m_iParams.deviceId = m_iDevice;
@@ -111,12 +137,12 @@ void Audio::duplex(int device)
     m_oParams.deviceId = m_oDevice;
     m_oParams.nChannels = m_channels;
     m_oParams.firstChannel = m_oOffset;
-    options.flags = RTAUDIO_SCHEDULE_REALTIME; // use realtime priority if it's available
-}
+    //    if ( m_iDevice == 0 )
+    //      m_iParams.deviceId = m_adac->getDefaultInputDevice();
+    //    if ( m_oDevice == 0 )
+    //      m_oParams.deviceId = m_adac->getDefaultOutputDevice();
 
-void Audio::start() {
-//    test_cpp();
-    duplex(0); // use the default audio interface
+    options.flags = RTAUDIO_SCHEDULE_REALTIME; // use realtime priority if it's available
     std::cout << "using default audio interface device\n";
     std::cout << m_adac->getDeviceInfo(m_iDevice).name
               << "\tfor input and output\n";
@@ -126,29 +152,44 @@ void Audio::start() {
     m_adac->showWarnings(true);
 
     unsigned int dummy = HackTrip::mFPP;
-    m_adac->openStream(&m_oParams, &m_iParams,
-                       FORMAT, HackTrip::mSampleRate, &dummy,
-                       &Audio::wrapperProcessCallback,
-                       (void *)this, &options);
-    if (mRTaudio->isStreamOpen() == false) {
+    //    m_adac->openStream(&m_oParams, &m_iParams,
+    //                       FORMAT, HackTrip::mSampleRate, &dummy,
+    //                       &Audio::wrapperProcessCallback,
+    //                       (void *)this, &options);
+    bufferFrames = HackTrip::mFPP;
+    bufferBytes = HackTrip::mFPP*HackTrip::mChannels*2;
+    if (m_adac->openStream( &m_oParams, &m_iParams, FORMAT, HackTrip::mSampleRate,
+                            &bufferFrames, &inout, (void*)&bufferBytes, &options ))
+    {
+        std::cout << "\nCouldn't open audio device streams!\n";
+    }
+    if (m_adac->isStreamOpen() == false) {
         std::cout << "\nCouldn't open audio device streams!\n";
         exit(1);
     } else {
-        std::cout << "\nStream latency = " << mRTaudio->getStreamLatency()
+        std::cout << "\nStream latency = " << m_adac->getStreamLatency()
                   << " frames" << std::endl;
     }
     std::cout << "\nAudio stream start" << std::endl;
-//    mRTaudio->startStream();
+    if (m_adac->startStream())
+    {
+        std::cout << "\nCouldn't start streams!\n";
+    }
 }
 
 void Audio::stop()
 {
-    if (mRTaudio->isStreamOpen())
-        mRTaudio->closeStream();
+    std::cout << "\nAudio stream stop" << std::endl;
+    if (m_adac->isStreamRunning())
+        std::cout << "\nAudio stream isStreamRunning" << std::endl;
+    if (m_adac->isStreamRunning())
+        m_adac->stopStream();
+    if ( m_adac->isStreamOpen() ) m_adac->closeStream();
     std::cout << "\nAudio stream closed" << std::endl;
     delete m_adac;
 }
-int Audio::test_cpp() {
+
+int Audio::api_cpp() {
     std::vector<RtAudio::Api> apis;
     RtAudio::getCompiledApi( apis );
 
