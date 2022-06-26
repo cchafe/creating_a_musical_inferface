@@ -54,8 +54,8 @@ void HackTrip::stop()
 }
 
 HackTrip:: ~HackTrip() {
-    delete mReg;
     delete mAudio;
+    delete mReg;
     //    delete mUdpSend;
     //    delete mUdpRcv;
 }
@@ -75,54 +75,65 @@ void HackTrip::contactServer()
 }
 
 
-int Audio::networkAudio_callback
-(void *outputBuffer, void *inputBuffer,
- unsigned int nBufferFrames, double streamTime,
- RtAudioStreamStatus status, void *bytesInfoFromStreamOpen) {
-    std::cout << "audio callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
+int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
+                                  unsigned int nBufferFrames,
+                                  double streamTime, RtAudioStreamStatus status,
+                                  void * /* data */ ) // last arg is used for "this"
+{
+//    std::cout << m_iOffset << " audio callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
     if (false) { // DSP block
 
         // this should be a pull
         //                mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
         mRegFromHackTrip->dummyPacket((int8_t *)outputBuffer);
 
-        // diagnostic output
-        //        std::cout << "Stream xxxxxxxxxxxx" << std::endl;
-        MY_TYPE *inBuffer = (MY_TYPE *)inputBuffer;
-        MY_TYPE *outBuffer = (MY_TYPE *)outputBuffer;
-        double tmp[nBufferFrames * 2];
-        for (unsigned int i = 0; i < nBufferFrames; i++) {
-            for (unsigned int j = 0; j < 2; j++) {
-                unsigned int index = i * 2 + j;
-                tmp[index] = *inBuffer++ / SCALE; // input signals
-                //                tmp[index] = (0.7 * sin(gPhasor[j])); // sine output
-                //                gPhasor[j] += (!j) ? 0.1 : 0.11;
-                tmp[index] *= 0.3;
-                tmp[index] = (j == 1) ? tmp[index - 1] : tmp[index]; // left overwrites right
-                *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
-            }
-        }
+//        // diagnostic output
+//        //        std::cout << "Stream xxxxxxxxxxxx" << std::endl;
+//        MY_TYPE *inBuffer = (MY_TYPE *)inputBuffer;
+//        MY_TYPE *outBuffer = (MY_TYPE *)outputBuffer;
+//        double tmp[nBufferFrames * 2];
+//        for (unsigned int i = 0; i < nBufferFrames; i++) {
+//            for (unsigned int j = 0; j < 2; j++) {
+//                unsigned int index = i * 2 + j;
+//                tmp[index] = *inBuffer++ / SCALE; // input signals
+//                //                tmp[index] = (0.7 * sin(gPhasor[j])); // sine output
+//                //                gPhasor[j] += (!j) ? 0.1 : 0.11;
+//                tmp[index] *= 0.3;
+//                tmp[index] = (j == 1) ? tmp[index - 1] : tmp[index]; // left overwrites right
+//                *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
+//            }
+//        }
     }
+    unsigned int bytes = nBufferFrames*m_channels*sizeof(MY_TYPE);
+    memcpy( outputBuffer, inputBuffer, bytes);
     return 0;
 }
 
 int Audio::inout( void *outputBuffer, void *inputBuffer,
-                  unsigned int /*nBufferFrames*/,
+                  unsigned int nBufferFrames,
                   double streamTime, RtAudioStreamStatus status,
-                  void *data )
+                  void * /* data */ ) // last arg is used for "this"
 {
     // Since the number of input and output channels is equal, we can do
     // a simple buffer copy operation here.
     if ( status ) std::cout << "Stream over/underflow detected." << std::endl;
 
-    if ( streamTime >= streamTimePrintTime ) {
+    if ( streamTime >= m_streamTimePrintTime ) {
         std::cout << "streamTime = " << streamTime << std::endl;
-        streamTimePrintTime += streamTimePrintIncrement;
+        m_streamTimePrintTime += m_streamTimePrintIncrement;
     }
 
-    unsigned int *bytes = (unsigned int *) data;
-    memcpy( outputBuffer, inputBuffer, *bytes );
+    unsigned int bytes = nBufferFrames*m_channels*sizeof(MY_TYPE);
+    memcpy( outputBuffer, inputBuffer, bytes);
     return 0;
+}
+int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
+                                  unsigned int nBufferFrames, double streamTime,
+                                  RtAudioStreamStatus status, void *arg)
+{
+//    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
+    return static_cast<Audio*>(arg)->networkAudio_callback(
+                outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
 
 void Audio::duplex(int device)
@@ -132,6 +143,8 @@ void Audio::duplex(int device)
 void Audio::start() {
     //    api_cpp();
     //    duplex(0); // use the default audio interface
+    m_streamTimePrintIncrement = 1.0; // seconds
+    m_streamTimePrintTime = 1.0; // seconds
     m_adac = new RtAudio();
     if (m_adac->getDeviceCount() < 1) {
         std::cout << "\nNo audio devices found!\n";
@@ -190,14 +203,6 @@ void Audio::start() {
     {
         std::cout << "\nCouldn't start streams!\n";
     }
-}
-int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
-                                  unsigned int nBufferFrames, double streamTime,
-                                  RtAudioStreamStatus status, void *arg)
-{
-    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
-    return static_cast<Audio*>(arg)->inout(
-                outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
 
 void Audio::stop()

@@ -90,6 +90,8 @@ public:
 private:
     // these are identical to the rtaudio/tests/Duplex.cpp example
     // except with m_ prepended
+    double m_streamTimePrintIncrement;
+    double m_streamTimePrintTime;
     unsigned int m_channels;
     unsigned int m_fs;
     unsigned int m_oDevice;
