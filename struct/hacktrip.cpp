@@ -7,9 +7,9 @@ double streamTimePrintIncrement = 1.0; // seconds
 double streamTimePrintTime = 1.0; // seconds
 
 int inoutGlobal( void *outputBuffer, void *inputBuffer,
-                  unsigned int /*nBufferFrames*/,
-                  double streamTime, RtAudioStreamStatus status,
-                  void *data )
+                 unsigned int /*nBufferFrames*/,
+                 double streamTime, RtAudioStreamStatus status,
+                 void *data )
 {
     // Since the number of input and output channels is equal, we can do
     // a simple buffer copy operation here.
@@ -74,14 +74,6 @@ void HackTrip::contactServer()
     //    mTcpClient.sendToHost();
 }
 
-//int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
-//                                  unsigned int nBufferFrames, double streamTime,
-//                                  RtAudioStreamStatus status, void *arg)
-//{
-//    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
-//    return static_cast<Audio*>(arg)->networkAudio_callback(
-//                outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
-//}
 
 int Audio::networkAudio_callback
 (void *outputBuffer, void *inputBuffer,
@@ -178,8 +170,11 @@ void Audio::start() {
     //                       (void *)this, &options);
     bufferFrames = HackTrip::mFPP;
     bufferBytes = HackTrip::mFPP*HackTrip::mChannels*2;
+    //    if (m_adac->openStream( &m_oParams, &m_iParams, FORMAT, HackTrip::mSampleRate,
+    //                            &bufferFrames, &inoutGlobal, (void*)&bufferBytes, &options ))
     if (m_adac->openStream( &m_oParams, &m_iParams, FORMAT, HackTrip::mSampleRate,
-                            &bufferFrames, &inoutGlobal, (void*)&bufferBytes, &options ))
+                            &bufferFrames, &Audio::wrapperProcessCallback,
+                            (void*)this,  &options ))
     {
         std::cout << "\nCouldn't open audio device streams!\n";
     }
@@ -195,6 +190,14 @@ void Audio::start() {
     {
         std::cout << "\nCouldn't start streams!\n";
     }
+}
+int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
+                                  unsigned int nBufferFrames, double streamTime,
+                                  RtAudioStreamStatus status, void *arg)
+{
+    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
+    return static_cast<Audio*>(arg)->inout(
+                outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
 
 void Audio::stop()

@@ -79,9 +79,11 @@ public:
     void start();
     void stop();
     int api_cpp();
-    //    static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
-    //                                      unsigned int nBufferFrames, double streamTime,
-
+    int inout( void *outputBuffer, void *inputBuffer, unsigned int /*nBufferFrames*/,
+               double streamTime, RtAudioStreamStatus status, void *data );
+    static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
+                                      unsigned int nBufferFrames, double streamTime,
+                                      RtAudioStreamStatus status, void *arg);
     unsigned int bufferFrames;
     unsigned int bufferBytes;
     //    RtAudioStreamStatus status, void *arg);
