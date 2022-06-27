@@ -353,17 +353,17 @@ void Regulator::dummyPacket(int8_t* buf)
 {
 //    QMutexLocker locker(&mMutex);
     // diagnostic output
-//    /////////////////////
-//    for (unsigned int i = 0; i < mFPP; i++) {
-//        for (unsigned int j = 0; j < 2; j++) {
-//            unsigned int index = i * 2 + j;
-////            sampleToBits(0.7 * sin(mPhasor[j]), j, i);
-////            mPhasor[j] += (!j) ? 0.2 : 0.11;
-//        }
-//    }
-//    /////////////////////
-//    memcpy(buf, mXfrBuffer, mBytes);
-    std::cout << "dummyPacket \n";
+    /////////////////////
+    for (unsigned int i = 0; i < mFPP; i++) {
+        for (unsigned int j = 0; j < mNumChannels; j++) {
+            unsigned int index = i * mNumChannels + j;
+            sampleToBits(0.7 * sin(mPhasor[j]), j, i);
+            mPhasor[j] += (!j) ? 0.2 : 0.201;
+        }
+    }
+    /////////////////////
+    memcpy(buf, mXfrBuffer, mBytes);
+//    std::cout << "dummyPacket \n";
 };
 
 //*******************************************************************************

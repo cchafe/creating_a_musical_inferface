@@ -80,8 +80,11 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
                                   double streamTime, RtAudioStreamStatus status,
                                   void * /* data */ ) // last arg is used for "this"
 {
-//    std::cout << m_iOffset << " audio callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
-    if (true) { // DSP block
+    if ( streamTime >= m_streamTimePrintTime ) {
+        std::cout << " networkAudio_callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
+        m_streamTimePrintTime += m_streamTimePrintIncrement;
+    }
+     if (true) { // DSP block
 
         // this should be a pull
         //                mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
@@ -89,20 +92,20 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
 
 //        // diagnostic output
 //        //        std::cout << "Stream xxxxxxxxxxxx" << std::endl;
-        MY_TYPE *inBuffer = (MY_TYPE *)inputBuffer;
-        MY_TYPE *outBuffer = (MY_TYPE *)outputBuffer;
-        double tmp[nBufferFrames * m_channels];
-        for (unsigned int i = 0; i < nBufferFrames; i++) {
-            for (unsigned int j = 0; j < m_channels; j++) {
-                unsigned int index = i * m_channels + j;
-                tmp[index] = *inBuffer++ / SCALE; // input signals
-                //                tmp[index] = (0.7 * sin(gPhasor[j])); // sine output
-                //                gPhasor[j] += (!j) ? 0.1 : 0.11;
-                tmp[index] *= 1.1;
-//                tmp[index] = (j == 1) ? tmp[index - 1] : tmp[index]; // left overwrites right
-                *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
-            }
-        }
+//        MY_TYPE *inBuffer = (MY_TYPE *)inputBuffer;
+//        MY_TYPE *outBuffer = (MY_TYPE *)outputBuffer;
+//        double tmp[nBufferFrames * m_channels];
+//        for (unsigned int i = 0; i < nBufferFrames; i++) {
+//            for (unsigned int j = 0; j < m_channels; j++) {
+//                unsigned int index = i * m_channels + j;
+//                tmp[index] = *inBuffer++ / SCALE; // input signals
+//                //                tmp[index] = (0.7 * sin(gPhasor[j])); // sine output
+//                //                gPhasor[j] += (!j) ? 0.1 : 0.11;
+//                tmp[index] *= 1.1;
+////                tmp[index] = (j == 1) ? tmp[index - 1] : tmp[index]; // left overwrites right
+//                *outBuffer++ = (MY_TYPE)(tmp[index] * SCALE);
+//            }
+//        }
     }
 //    unsigned int bytes = nBufferFrames*m_channels*sizeof(MY_TYPE);
 //    memcpy( outputBuffer, inputBuffer, bytes);
