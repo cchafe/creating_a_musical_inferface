@@ -43,16 +43,16 @@ public:
 class UDP : public QThread
 {
 public:
-    UDP(bool rcv = false, Regulator * reg = 0)
-        : mRcv(rcv)
-        , mRegFromHackTrip(reg)
+    UDP( Regulator * reg = 0, bool rcv = false)
+        : mRegFromHackTrip(reg)
+        , mRcv(rcv)
     {
         int audioDataLen = 64*2*2;
         mZeros = new QByteArray();
         mZeros->resize(audioDataLen);
         mZeros->fill(0,audioDataLen);
         mPhasor.resize(2, 0.0); //HackTrip::mChannels
-
+mTest = reg && !rcv;
     };
     void test();
     void stop();
@@ -60,13 +60,14 @@ private:
     virtual void run();
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
+    Regulator * mRegFromHackTrip;
     int mPeerPort;
     QByteArray mBuf;
     bool mStop;
-    bool mRcv; // else Send
+    bool mTest;
+    bool mRcv;
     MY_TYPE *inBuffer;
     QByteArray *mZeros;
-    Regulator * mRegFromHackTrip;
     std::vector<double> mPhasor;
 };
 
@@ -90,6 +91,7 @@ public:
 private:
     // these are identical to the rtaudio/tests/Duplex.cpp example
     // except with m_ prepended
+    RtAudio *m_adac;
     double m_streamTimePrintIncrement;
     double m_streamTimePrintTime;
     unsigned int m_channels;
@@ -98,7 +100,6 @@ private:
     unsigned int m_iDevice;
     unsigned int m_iOffset;
     unsigned int m_oOffset;
-    RtAudio *m_adac;
     RtAudio::StreamParameters m_iParams;
     RtAudio::StreamParameters m_oParams;
     RtAudio::StreamOptions options;
@@ -110,6 +111,7 @@ private:
                               RtAudioStreamStatus status,
                               void *bytesInfoFromStreamOpen);
     Regulator * mRegFromHackTrip;;
+    std::vector<double> mPhasor;
 };
 
 class HackTrip
@@ -133,6 +135,7 @@ private:
     friend class UDP;
     friend class Audio;
     //    TCP mTcpClient;
+    UDP *mUdpFake;
     UDP *mUdpSend;
     UDP *mUdpRcv;
     Audio *mAudio;

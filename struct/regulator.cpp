@@ -269,9 +269,9 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
     if (seq_num != -1) {
         if (!mFPPratioIsSet) {  // first peer packet
 //            mPeerFPP = len / (mNumChannels * mBitResolutionMode);
-            mPeerFPP = 128;
-            qDebug() << "shimFPP mPeerFPP hardwired with"
-                     << mPeerFPP << " for testing";
+            mPeerFPP = 256;
+            std::cout << "!!!!!!!!!!!! shimFPP mPeerFPP hardwired with"
+                     << mPeerFPP << " for testing\n";
             // bufstrategy 1 autoq mode overloads qLen with negative val
             // creates this ugly code
             if (mMsecTolerance < 0) {  // handle -q auto or, for example, -q auto10
@@ -327,7 +327,7 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
                 }
             }
         }
-        pushStat->tick();
+//        pushStat->tick();
         double adjustAuto = pushStat->calcAuto(mAutoHeadroom, mFPPdurMsec);
         //        qDebug() << adjustAuto;
         if (mAuto && (pushStat->lastTime > AutoInitDur))
@@ -354,16 +354,32 @@ void Regulator::dummyPacket(int8_t* buf)
 //    QMutexLocker locker(&mMutex);
     // diagnostic output
     /////////////////////
+//    for (unsigned int i = 0; i < mFPP; i++) {
+//        for (unsigned int j = 0; j < mNumChannels; j++) {
+//            unsigned int index = i * mNumChannels + j;
+//            sampleToBits(0.7 * sin(mPhasor[j]), j, i);
+//            mPhasor[j] += (!j) ? 0.2 : 0.201;
+//        }
+//    }
+    /////////////////////
+    memcpy(buf, mXfrBuffer, mBytes);
+//    std::cout << "dummyPacket \n";
+};
+
+//*******************************************************************************
+void Regulator::sineTestPacket(int8_t* buf)
+{
+//    QMutexLocker locker(&mMutex);
+    // diagnostic output
+    /////////////////////
     for (unsigned int i = 0; i < mFPP; i++) {
         for (unsigned int j = 0; j < mNumChannels; j++) {
-            unsigned int index = i * mNumChannels + j;
             sampleToBits(0.7 * sin(mPhasor[j]), j, i);
             mPhasor[j] += (!j) ? 0.2 : 0.201;
         }
     }
     /////////////////////
     memcpy(buf, mXfrBuffer, mBytes);
-//    std::cout << "dummyPacket \n";
 };
 
 //*******************************************************************************

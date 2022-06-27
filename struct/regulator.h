@@ -174,6 +174,7 @@ class Regulator
 
     void pullPacket(int8_t* buf);
     void dummyPacket(int8_t* buf);
+    void sineTestPacket(int8_t* buf);
 
     virtual void readSlotNonBlocking(int8_t* ptrToReadSlot) { pullPacket(ptrToReadSlot); }
 
