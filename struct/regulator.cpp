@@ -338,7 +338,7 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
 //*******************************************************************************
 void Regulator::pushPacket(const int8_t* buf, int seq_num)
 {
-//    QMutexLocker locker(&mMutex);
+    QMutexLocker locker(&mMutex);
     seq_num %= mModSeqNum;
     // if (seq_num==0) return;   // impose regular loss
     mIncomingTiming[seq_num] =
@@ -369,7 +369,7 @@ void Regulator::dummyPacket(int8_t* buf)
 //*******************************************************************************
 void Regulator::sineTestPacket(int8_t* buf)
 {
-//    QMutexLocker locker(&mMutex);
+    QMutexLocker locker(&mMutex);
     // diagnostic output
     /////////////////////
     for (unsigned int i = 0; i < mFPP; i++) {
@@ -385,7 +385,7 @@ void Regulator::sineTestPacket(int8_t* buf)
 //*******************************************************************************
 void Regulator::pullPacket(int8_t* buf)
 {
-//    QMutexLocker locker(&mMutex);
+    QMutexLocker locker(&mMutex);
 //    std::cout << "pullPacket \n";
     mSkip = 0;
     if ((mLastSeqNumIn == -1) || (!mFPPratioIsSet)) {
@@ -445,6 +445,9 @@ void Regulator::processPacket(bool glitch)
     }
     if (glitch)
         tmp = (double)mIncomingTimer.nsecsElapsed();
+
+    glitch = false; // !!!!!!!!!!!!!!!!!!
+
     for (int ch = 0; ch < mNumChannels; ch++)
         processChannel(ch, glitch, mPacketCnt, mLastWasGlitch);
     mLastWasGlitch = glitch;
@@ -854,12 +857,12 @@ void StdDev::tick()
                 std::cout << std::setw(10) << mean << std::setw(10) << lastMin << std::setw(10) << max
                      << std::setw(10) << stdDevTmp << std::setw(10) << longTermStdDev << " " << mId
                      << std::endl;
-        } else if (true)
+        } else if (false) //  !!!!!!!!!!!!!!!!!!!1
             std::cout << "printing directly from Regulator->stdDev->tick:\n (mean / min / "
                     "max / "
                     "stdDev / longTermStdDev) \n";
 
-        longTermCnt++;
+//        longTermCnt++; !!!!!!!!!!!!!!!!!!!1
         lastMean         = mean;
         lastMin          = min;
         lastMax          = max;

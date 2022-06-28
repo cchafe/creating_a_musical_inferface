@@ -88,9 +88,11 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
     if (true) { // DSP block
 
         // this should be a pull
-//        mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
+        mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
 //        mRegFromHackTrip->dummyPacket((int8_t *)outputBuffer);
-        mRegFromHackTrip->sineTestPacket((int8_t *)outputBuffer);
+
+        // write sines to mXfr, memcpy mXfr to outputBuffer
+//        mRegFromHackTrip->sineTestPacket((int8_t *)outputBuffer);
 
         //        // diagnostic output
         //        //        std::cout << "Stream xxxxxxxxxxxx" << std::endl;
@@ -401,7 +403,10 @@ void UDP::run() {
             if (seq%500 == 0)
                 std::cout << "test packet = " << seq << "\tperiod(uSec) = " << uSecPeriod << std::endl;
             int dontSizeMeFromNetworkPacketYet = 0;
+
+            // write sines to mXfr, memcpy mXfr to mZeros
             mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
+            // write mZeros to pushPacket. memcpy to mLastSeqNumIn
             mRegFromHackTrip->shimFPP((int8_t *)mZeros->data(), dontSizeMeFromNetworkPacketYet, seq);
 
             usleep(uSecPeriod);
