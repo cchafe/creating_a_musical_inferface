@@ -37,8 +37,8 @@ void HackTrip::start()
 {
     //    mUdpSend = new UDP(); // send to network
     mUdpSend = new UDP(mReg); // push to reg, for internal test
-    //    mUdpRcv = new UDP(mReg, true); // push to reg, rcv from network
-    mUdpSend->start(); // overwritint mxfr
+    //    mUdpRcv = new UDP(mReg, true); // rcv from network, push to reg
+    mUdpSend->start();
     //    mUdpRcv->start();
     mAudio->start();
 }
