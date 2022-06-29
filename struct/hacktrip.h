@@ -112,6 +112,8 @@ private:
                               void *bytesInfoFromStreamOpen);
     Regulator * mRegFromHackTrip;;
     std::vector<double> mPhasor;
+    QByteArray *mZeros;
+    int seq;
 };
 
 class HackTrip

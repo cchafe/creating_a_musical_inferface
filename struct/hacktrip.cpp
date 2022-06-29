@@ -36,9 +36,9 @@ HackTrip::HackTrip()
 void HackTrip::start()
 {
     //    mUdpSend = new UDP(); // send to network
-    mUdpSend = new UDP(mReg); // push to reg, for internal test
+//    mUdpSend = new UDP(mReg); // push to reg, for internal test
     //    mUdpRcv = new UDP(mReg, true); // rcv from network, push to reg
-    mUdpSend->start();
+//    mUdpSend->start();
     //    mUdpRcv->start();
     mAudio->start();
 }
@@ -47,8 +47,8 @@ void HackTrip::stop()
 {
     //    mUdpRcv->stop();
     //    mUdpRcv->wait();
-    mUdpSend->stop();
-    mUdpSend->wait();
+//    mUdpSend->stop();
+//    mUdpSend->wait();
     mAudio->stop();
 }
 
@@ -64,6 +64,11 @@ Audio::Audio(Regulator * reg)
 {
     m_adac = 0;
     mPhasor.resize(2, 0.0); //HackTrip::mChannels
+    int audioDataLen = 256*2*2;
+    mZeros = new QByteArray();
+    mZeros->resize(audioDataLen);
+    mZeros->fill(0,audioDataLen);
+    seq = 0;
 };
 
 Audio:: ~Audio() {
@@ -84,6 +89,19 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
     if ( streamTime >= m_streamTimePrintTime ) {
         std::cout << " networkAudio_callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
         m_streamTimePrintTime += m_streamTimePrintIncrement;
+    }
+    {
+        // this is the push
+        seq++;
+        seq %= 65536;
+        if (seq%500 == 0)
+            std::cout << "test packet = " << seq << " to shimFPP from audio callback " << std::endl;
+        int dontSizeMeFromNetworkPacketYet = 0;
+        // write sines to mXfr, memcpy mXfr to mZeros
+        mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
+        // write mZeros to pushPacket. memcpy to mLastSeqNumIn
+        mRegFromHackTrip->shimFPP((int8_t *)mZeros->data(), dontSizeMeFromNetworkPacketYet, seq);
+
     }
     if (true) { // DSP block
 
@@ -394,7 +412,7 @@ void UDP::run() {
     int seq = 0;
     //    int audioDataLen = gFPP*2*2;
     //    int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
-    unsigned long uSecPeriod = (256.0/48000.0) * 1000000.0;
+    unsigned long uSecPeriod = (222.0/48000.0) * 1000000.0;
     mStop = false;
     while (!mStop) {
         if (mTest) {

@@ -270,7 +270,7 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
         if (!mFPPratioIsSet) {  // first peer packet
 //            mPeerFPP = len / (mNumChannels * mBitResolutionMode);
             mPeerFPP = 256;
-            std::cout << "!!!!!!!!!!!! shimFPP mPeerFPP hardwired with"
+            std::cout << "!!!!!!!!!!!! shimFPP mPeerFPP hardwired with "
                      << mPeerFPP << " for testing\n";
             // bufstrategy 1 autoq mode overloads qLen with negative val
             // creates this ugly code
