@@ -9,11 +9,11 @@
 #include "regulator.h"
 
 //const QString gServer = "54.193.131.283";
-//const QString gServer = "jackloop256.stanford.edu";
+const QString gServer = "jackloop256.stanford.edu";
 //const QString gServer = "cmn55.stanford.edu";
 //const QString gServer = "cmn9.stanford.edu";
 //const QString gServer = "171.64.197.158";
-const QString gServer = "127.0.0.1"; // don't use "loopback", doesn't resolve
+//const QString gServer = "127.0.0.1"; // don't use "loopback", doesn't resolve
 typedef signed short MY_TYPE; // audio interface data is 16bit ints
 #define FORMAT RTAUDIO_SINT16 // which has this rtaudio name
 #define SCALE 32767.0 // audio samples for processing are doubles, so this is the conversion
