@@ -5,14 +5,15 @@
 #include <rtaudio/RtAudio.h>
 #include <QThread>
 #include <QHostInfo>
+#include <QUdpSocket>
 #include "regulator.h"
 
-const QString gServer = "54.193.131.283";
-//const QString gServer = "jackloop64.stanford.edu";
+//const QString gServer = "54.193.131.283";
+//const QString gServer = "jackloop256.stanford.edu";
 //const QString gServer = "cmn55.stanford.edu";
 //const QString gServer = "cmn9.stanford.edu";
 //const QString gServer = "171.64.197.158";
-//const QString gServer = "localhost";
+const QString gServer = "127.0.0.1"; // don't use "loopback", doesn't resolve
 typedef signed short MY_TYPE; // audio interface data is 16bit ints
 #define FORMAT RTAUDIO_SINT16 // which has this rtaudio name
 #define SCALE 32767.0 // audio samples for processing are doubles, so this is the conversion
@@ -43,20 +44,15 @@ public:
 class UDP : public QThread
 {
 public:
-    UDP( Regulator * reg = 0, bool rcv = false)
-        : mRegFromHackTrip(reg)
-        , mRcv(rcv)
-    {
-        int audioDataLen = 64*2*2;
-        mZeros = new QByteArray();
-        mZeros->resize(audioDataLen);
-        mZeros->fill(0,audioDataLen);
-        mPhasor.resize(2, 0.0); //HackTrip::mChannels
-mTest = reg && !rcv;
-    };
+    UDP(int audioDataLen, Regulator * reg = 0);
+
     void test();
     void stop();
+    void send(int seq, int8_t *audioBuf);
 private:
+    int mAudioDataLen;
+    QUdpSocket sendSock;
+    QHostAddress serverHostAddress;
     virtual void run();
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
@@ -75,7 +71,7 @@ private:
 class Audio
 {
 public:
-    Audio(Regulator * reg);
+    Audio( int audioDataLen, Regulator * reg, UDP * udpSend);
     ~Audio();
     void start();
     void stop();
@@ -110,7 +106,8 @@ private:
                               unsigned int nBufferFrames, double streamTime,
                               RtAudioStreamStatus status,
                               void *bytesInfoFromStreamOpen);
-    Regulator * mRegFromHackTrip;;
+    Regulator * mRegFromHackTrip;
+    UDP * mUdpSend;
     std::vector<double> mPhasor;
     QByteArray *mZeros;
     int seq;
@@ -127,7 +124,7 @@ public:
 private:
     Regulator * mReg;
     const QString mPort = "4464";
-    static const int mAudioPort = 4465;
+    static const int mAudioPort = 4464;
     static const int mFPP = 256;
     static const int mSocketWaitMs = 1500;
     static const int mSampleRate = 48000;
@@ -136,11 +133,13 @@ private:
     friend class TCP;
     friend class UDP;
     friend class Audio;
-    //    TCP mTcpClient;
-    UDP *mUdpFake;
-    UDP *mUdpSend;
-    UDP *mUdpRcv;
+    TCP mTcpClient;
+//    UDP *mUdpFake;
+//    UDP *mUdpSend;
+//    UDP *mUdpRcv;
+    UDP *mUdp; // main thread is send, qthread is rcv
     Audio *mAudio;
+    int audioDataLen;
 };
 
 
