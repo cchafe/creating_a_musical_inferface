@@ -99,8 +99,8 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
         //        mRegFromHackTrip->shimFPP((int8_t *)mZeros->data(), dontSizeMeFromNetworkPacketYet, seq);
 
         // write sines to mXfr, memcpy mXfr to mZeros
-        //        mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
-        //        mUdpSend->send(seq,(int8_t *)mZeros->data());
+//                mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
+//                mUdpSend->send(seq,(int8_t *)mZeros->data());
         mUdpSend->send(seq,(int8_t *)inputBuffer);
 
     }
@@ -130,8 +130,9 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
         //                    }
         //                }
     }
-    //    unsigned int bytes = nBufferFrames*m_channels*sizeof(MY_TYPE);
-    //    memcpy( outputBuffer, inputBuffer, bytes);
+//        unsigned int bytes = nBufferFrames*m_channels*sizeof(MY_TYPE);
+//        memcpy( inputBuffer, mZeros->data(), bytes);
+//        memcpy( outputBuffer, inputBuffer, bytes);
     return 0;
 }
 
@@ -195,14 +196,14 @@ void Audio::start() {
     //      m_oParams.deviceId = m_adac->getDefaultOutputDevice();
 
     options.flags = RTAUDIO_SCHEDULE_REALTIME; // use realtime priority if it's available
-    options.numberOfBuffers = HackTrip::mFPP;
+    options.numberOfBuffers = HackTrip::mNumberOfBuffersRtAudio; // Windows DirectSound, Linux OSS, and Linux Alsa APIs only.
     // value set by the user is replaced during execution of the RtAudio::openStream() function by the value actually used by the system
     std::cout << "using default audio interface device\n";
     std::cout << m_adac->getDeviceInfo(m_iDevice).name
               << "\tfor input and output\n";
     std::cout << "\tIf another is needed, either change your settings\n";
     std::cout << "\tor the choice in the code\n";
-    std::cout << "asking for numberOfBuffers = " << options.numberOfBuffers << "\n";
+//    std::cout << "asking for numberOfBuffers = " << options.numberOfBuffers << "\n";
     // Let RtAudio print messages to stderr.
     m_adac->showWarnings(true);
 
@@ -220,15 +221,14 @@ void Audio::start() {
         std::cout << "\nCouldn't open audio device streams!\n";
         exit(1);
     } else {
-        if (options.numberOfBuffers) {
-            std::cout << "\tgot numberOfBuffers = " << options.numberOfBuffers << "\n";
-        } else {
+//        if (options.numberOfBuffers) {
+//            std::cout << "\tgot numberOfBuffers = " << options.numberOfBuffers << "\n";
+//        } else {
             std::cout << "\trunning " <<
-                         m_adac->getApiDisplayName(m_adac->getCurrentApi()) <<
-                         "\n\twhich sets the actual numberOfBuffers and must match\n";
+                         m_adac->getApiDisplayName(m_adac->getCurrentApi()) << "\n";
             std::cout << "\nStream latency = " << m_adac->getStreamLatency()
                       << " frames" << std::endl;
-        }
+//        }
     }
     std::cout << "\nAudio stream start" << std::endl;
     if (m_adac->startStream())
@@ -469,7 +469,7 @@ void UDP::run() {
                 mRegFromHackTrip->shimFPP((int8_t *)inBuffer, len, seq);
             }
         } // network
-        msleep(1);
+//        msleep(1);
     }
     //    if (!mRcv) {
     //        // Send exit packet (with 1 redundant packet).
