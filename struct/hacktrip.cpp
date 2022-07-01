@@ -37,14 +37,14 @@ HackTrip::HackTrip()
 
 void HackTrip::start()
 {
-    mUdp->start();
+//    mUdp->start();
     mAudio->start();
 }
 
 void HackTrip::stop()
 {
-    mUdp->stop();
-    mUdp->wait();
+//    mUdp->stop();
+//    mUdp->wait();
     mAudio->stop();
 }
 
@@ -99,15 +99,15 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
         //        mRegFromHackTrip->shimFPP((int8_t *)mZeros->data(), dontSizeMeFromNetworkPacketYet, seq);
 
         // write sines to mXfr, memcpy mXfr to mZeros
-//                mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
+                mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
 //                mUdpSend->send(seq,(int8_t *)mZeros->data());
-        mUdpSend->send(seq,(int8_t *)inputBuffer);
+//        mUdpSend->send(seq,(int8_t *)inputBuffer);
 
     }
     if (true) { // DSP block
 
         // this should be a pull
-        mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
+//        mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
         //        mRegFromHackTrip->dummyPacket((int8_t *)outputBuffer);
 
         // write sines to mXfr, memcpy mXfr to outputBuffer
@@ -131,8 +131,8 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
         //                }
     }
 //        unsigned int bytes = nBufferFrames*m_channels*sizeof(MY_TYPE);
-//        memcpy( inputBuffer, mZeros->data(), bytes);
-//        memcpy( outputBuffer, inputBuffer, bytes);
+        memcpy( inputBuffer, mZeros->data(), bufferBytes);
+        memcpy( outputBuffer, inputBuffer, bufferBytes);
     return 0;
 }
 
