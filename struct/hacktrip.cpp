@@ -37,14 +37,14 @@ HackTrip::HackTrip()
 
 void HackTrip::start()
 {
-//    mUdp->start();
+    mUdp->start(); // rcv thread
     mAudio->start();
 }
 
 void HackTrip::stop()
 {
-//    mUdp->stop();
-//    mUdp->wait();
+    mUdp->stop();
+    mUdp->wait();
     mAudio->stop();
 }
 
@@ -86,7 +86,6 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
         m_streamTimePrintTime += m_streamTimePrintIncrement;
     }
     if (true) {
-        // this is network to reg
         seq++;
         seq %= 65536;
         if (seq%500 == 0)
@@ -99,15 +98,35 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
         //        mRegFromHackTrip->shimFPP((int8_t *)mZeros->data(), dontSizeMeFromNetworkPacketYet, seq);
 
         // write sines to mXfr, memcpy mXfr to mZeros
-                mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
-//                mUdpSend->send(seq,(int8_t *)mZeros->data());
-//        mUdpSend->send(seq,(int8_t *)inputBuffer);
+        //////////// send sineTest with mZeros is correct
+        //        mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
+        //        mUdpSend->send(seq,(int8_t *)mZeros->data());
+
+        //////////// send inputBuffer is correct
+//                        mRegFromHackTrip->sineTestPacket((int8_t *)inputBuffer);
+
+        //////////// diagnostic send is correct
+        MY_TYPE *inBuffer = (MY_TYPE *)inputBuffer;
+        MY_TYPE *in1Buffer = (MY_TYPE *)inputBuffer;
+        double tmp[nBufferFrames * m_channels];
+        for (unsigned int i = 0; i < nBufferFrames; i++) {
+            for (unsigned int j = 0; j < m_channels; j++) {
+                unsigned int index = i * m_channels + j;
+                tmp[index] = *inBuffer++ / SCALE; // input signals
+//                tmp[index] = (0.3 * sin(mPhasor[j])); // sine output
+//                mPhasor[j] += (!j) ? 0.2 : 0.201;
+//                tmp[index] *= 1.1;
+                *in1Buffer++ =
+                        (MY_TYPE)(tmp[index] * SCALE);
+            }
+        }
+        mUdpSend->send(seq,(int8_t *)inputBuffer);
 
     }
     if (true) { // DSP block
 
         // this should be a pull
-//        mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
+        mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
         //        mRegFromHackTrip->dummyPacket((int8_t *)outputBuffer);
 
         // write sines to mXfr, memcpy mXfr to outputBuffer
@@ -130,9 +149,8 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
         //                    }
         //                }
     }
-//        unsigned int bytes = nBufferFrames*m_channels*sizeof(MY_TYPE);
-        memcpy( inputBuffer, mZeros->data(), bufferBytes);
-        memcpy( outputBuffer, inputBuffer, bufferBytes);
+    //        memcpy( inputBuffer, mZeros->data(), bufferBytes);
+    //            memcpy( outputBuffer, inputBuffer, bufferBytes);
     return 0;
 }
 
@@ -203,7 +221,7 @@ void Audio::start() {
               << "\tfor input and output\n";
     std::cout << "\tIf another is needed, either change your settings\n";
     std::cout << "\tor the choice in the code\n";
-//    std::cout << "asking for numberOfBuffers = " << options.numberOfBuffers << "\n";
+    //    std::cout << "asking for numberOfBuffers = " << options.numberOfBuffers << "\n";
     // Let RtAudio print messages to stderr.
     m_adac->showWarnings(true);
 
@@ -221,14 +239,14 @@ void Audio::start() {
         std::cout << "\nCouldn't open audio device streams!\n";
         exit(1);
     } else {
-//        if (options.numberOfBuffers) {
-//            std::cout << "\tgot numberOfBuffers = " << options.numberOfBuffers << "\n";
-//        } else {
-            std::cout << "\trunning " <<
-                         m_adac->getApiDisplayName(m_adac->getCurrentApi()) << "\n";
-            std::cout << "\nStream latency = " << m_adac->getStreamLatency()
-                      << " frames" << std::endl;
-//        }
+        //        if (options.numberOfBuffers) {
+        //            std::cout << "\tgot numberOfBuffers = " << options.numberOfBuffers << "\n";
+        //        } else {
+        std::cout << "\trunning " <<
+                     m_adac->getApiDisplayName(m_adac->getCurrentApi()) << "\n";
+        std::cout << "\nStream latency = " << m_adac->getStreamLatency()
+                  << " frames" << std::endl;
+        //        }
     }
     std::cout << "\nAudio stream start" << std::endl;
     if (m_adac->startStream())
@@ -469,7 +487,7 @@ void UDP::run() {
                 mRegFromHackTrip->shimFPP((int8_t *)inBuffer, len, seq);
             }
         } // network
-//        msleep(1);
+        //        msleep(1);
     }
     //    if (!mRcv) {
     //        // Send exit packet (with 1 redundant packet).
