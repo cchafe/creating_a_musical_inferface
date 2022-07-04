@@ -48,7 +48,7 @@ public:
 
     void test();
     void stop();
-    void send(int seq, int8_t *audioBuf);
+    void send(int seq, MY_TYPE *audioBuf);
 private:
     int mAudioDataLen;
     QUdpSocket sendSock;

@@ -49,6 +49,7 @@
 #include <QMutex>
 #include <QMutexLocker>
 typedef float sample_t; // audio interface data is 16bit ints
+typedef signed short MY_TYPE; // audio interface data is 16bit ints
 
 
 class AudioInterface
@@ -174,7 +175,7 @@ class Regulator
 
     void pullPacket(int8_t* buf);
     void dummyPacket(int8_t* buf);
-    void sineTestPacket(int8_t* buf);
+    void sineTestPacket(MY_TYPE *buf);
 
     virtual void readSlotNonBlocking(int8_t* ptrToReadSlot) { pullPacket(ptrToReadSlot); }
 

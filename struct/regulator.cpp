@@ -367,7 +367,7 @@ void Regulator::dummyPacket(int8_t* buf)
 };
 
 //*******************************************************************************
-void Regulator::sineTestPacket(int8_t* buf)
+void Regulator::sineTestPacket(MY_TYPE* buf)
 {
     QMutexLocker locker(&mMutex);
     // diagnostic output
@@ -375,7 +375,7 @@ void Regulator::sineTestPacket(int8_t* buf)
     for (unsigned int i = 0; i < mFPP; i++) {
         for (unsigned int j = 0; j < mNumChannels; j++) {
             sampleToBits(0.7 * sin(mPhasor[j]), j, i);
-            mPhasor[j] += (!j) ? 0.2 : 0.201;
+            mPhasor[j] += (!j) ? 0.2 : 0.22;
         }
     }
     /////////////////////
