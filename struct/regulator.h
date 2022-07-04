@@ -158,6 +158,9 @@ class Regulator
     Regulator(int rcvChannels, int bit_res, int FPP, int qLen);
     virtual ~Regulator();
 
+    void shimFPPx(const MY_TYPE* buf, int len, int seq_num) {
+        shimFPP((int8_t *)buf, len, seq_num);
+    };
     void shimFPP(const int8_t* buf, int len, int seq_num);
     void pushPacket(const int8_t* buf, int seq_num);
     // can hijack unused2 to propagate incoming seq num if needed
