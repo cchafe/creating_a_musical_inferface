@@ -477,11 +477,11 @@ void UDP::run() {
                 inBufferx = (int8_t *)mBuf.data() + sizeof(HeaderStruct);
                 mInBuffer = (MY_TYPE *)inBufferx;
 
-                QByteArray tmpAudioBuf;
-                tmpAudioBuf.resize(mAudioDataLen);
-                tmpAudioBuf.fill(0,mAudioDataLen);
-                MY_TYPE * inBuffery = (MY_TYPE *)tmpAudioBuf.data();
-                MY_TYPE * inBufferz = (MY_TYPE *)tmpAudioBuf.data();
+//                QByteArray tmpAudioBuf;
+//                tmpAudioBuf.resize(mAudioDataLen);
+//                tmpAudioBuf.fill(0,mAudioDataLen);
+//                MY_TYPE * inBuffery = (MY_TYPE *)tmpAudioBuf.data();
+//                MY_TYPE * inBufferz = (MY_TYPE *)tmpAudioBuf.data();
 
                 //////////// diagnostic rcv
 //                double tmp[HackTrip::mFPP * HackTrip::mChannels];

@@ -362,23 +362,24 @@ void Regulator::rcvPacket(MY_TYPE* buf)
 {
     QMutexLocker locker(&mMutex);
 
-    double tmp[mFPP * mNumChannels];
-    for (unsigned int i = 0; i < mFPP; i++) {
-        for (unsigned int j = 0; j < mNumChannels; j++) {
-            unsigned int index = i * mNumChannels + j;
-            tmp[index] = *buf++ / 32767.0; // input signals
-            //                        if (j)
-            //                            std::cout << "UDP rcv:  " << tmp[index] << std::endl;
-            //                        else
-            //                        std::cout << "\t " << tmp[index] << std::endl;
-//            *inBuffery++ = tmp[index] * SCALE;
-        }
-    }
+//    double tmp[mFPP * mNumChannels];
+//    for (unsigned int i = 0; i < mFPP; i++) {
+//        for (unsigned int j = 0; j < mNumChannels; j++) {
+//            unsigned int index = i * mNumChannels + j;
+//            tmp[index] = *buf++ / 32767.0; // input signals
+//            //                        if (j)
+//            //                            std::cout << "UDP rcv:  " << tmp[index] << std::endl;
+//            //                        else
+//            //                        std::cout << "\t " << tmp[index] << std::endl;
+////            *inBuffery++ = tmp[index] * SCALE;
+//        }
+//    }
     /////////////////////
     for (unsigned int i = 0; i < mFPP; i++) {
         for (unsigned int j = 0; j < mNumChannels; j++) {
-            unsigned int index = i * mNumChannels + j;
-            sampleToBits(tmp[index], j, i);
+//            unsigned int index = i * mNumChannels + j;
+            sampleToBits(*buf++ / 32767.0, j, i);
+//            sampleToBits(tmp[index], j, i);
         }
     }
     /////////////////////
