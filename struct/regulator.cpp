@@ -98,7 +98,7 @@ constexpr double AutoInitDur = 6000.0;  // kick in auto after this many msec
 constexpr double AutoInitValFactor =
     0.5;  // scale for initial mMsecTolerance during init phase if unspecified
 // tweak
-constexpr int WindowDivisor = 8;     // for faster auto tracking
+constexpr int WindowDivisor = 1;     // for faster auto tracking !!!!!!!!!!!!!!!!!!
 constexpr int MaxFPP        = 1024;  // tested up to this FPP
 //*******************************************************************************
 Regulator::Regulator(int rcvChannels, int bit_res, int FPP, int qLen)
@@ -198,7 +198,7 @@ Regulator::Regulator(int rcvChannels, int bit_res, int FPP, int qLen)
     mFPPdurMsec          = 1000.0 * mFPP / 48000.0;
     changeGlobal_3(LostWindowMax);
     changeGlobal_2(NumSlotsMax);  // need hg if running GUI
-
+    mGlitchCnt = 0; // !!!!!!!!!!!!!!!!!!
 }
 
 void Regulator::changeGlobal(double x)
@@ -260,16 +260,19 @@ void Regulator::setFPPratio()
     } else if (mFPPratioDenominator > 1) {
         mModSeqNumPeer = mModSeqNum / mFPPratioDenominator;
     }
+//    std::cout << " mFPPratioNumerator = " << mFPPratioNumerator
+//                  << " mFPPratioDenominator = " << mFPPratioDenominator << "\n";
 }
 
 //*******************************************************************************
 void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
 {
-//    std::cout << " shimFPP seq = " << seq_num;
+    QMutexLocker locker(&mMutex);
+//    std::cout << " shimFPP seq = " << seq_num << "\n";
     if (seq_num != -1) {
         if (!mFPPratioIsSet) {  // first peer packet
 //            mPeerFPP = len / (mNumChannels * mBitResolutionMode);
-            mPeerFPP = 256;
+            mPeerFPP = 256; // !!!!!!!!!!!!
             std::cout << "!!!!!!!!!!!! shimFPP mPeerFPP hardwired with "
                      << mPeerFPP << " for testing\n";
             // bufstrategy 1 autoq mode overloads qLen with negative val
@@ -302,7 +305,9 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
             mFPPratioIsSet = true;
         }
         if (mFPPratioNumerator == mFPPratioDenominator) {
-            pushPacket(buf, seq_num);
+            // not ok without mutex !!!!!!!!!!!!!!!!!!!!!!!!
+//                    sineTestPacket((MY_TYPE*)buf);
+            pushPacket(mXfrBuffer, seq_num);
         } else {
             seq_num %= mModSeqNumPeer;
             if (mFPPratioNumerator > 1) {  // 2/1, 4/1 peer FPP is lower, , (local/peer)/1
@@ -327,7 +332,7 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
                 }
             }
         }
-//        pushStat->tick();
+        pushStat->tick();
         double adjustAuto = pushStat->calcAuto(mAutoHeadroom, mFPPdurMsec);
         //        qDebug() << adjustAuto;
         if (mAuto && (pushStat->lastTime > AutoInitDur))
@@ -338,38 +343,55 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
 //*******************************************************************************
 void Regulator::pushPacket(const int8_t* buf, int seq_num)
 {
-    QMutexLocker locker(&mMutex);
+//    QMutexLocker locker(&mMutex);
     seq_num %= mModSeqNum;
     // if (seq_num==0) return;   // impose regular loss
     mIncomingTiming[seq_num] =
         mMsecTolerance + (double)mIncomingTimer.nsecsElapsed() / 1000000.0;
     mLastSeqNumIn = seq_num;
-    if (mLastSeqNumIn != -1)
+//    std::cout << mLastSeqNumIn << " \n";
+    if (mLastSeqNumIn != -1) {
+        // ok !!!!!!!!!!!!!!!!!!!!!!!!
+//                sineTestPacket((MY_TYPE*)buf);
         memcpy(mSlots[mLastSeqNumIn % mNumSlots], buf, mBytes);
+    }
 };
 
 //*******************************************************************************
-void Regulator::dummyPacket(int8_t* buf)
+void Regulator::rcvPacket(MY_TYPE* buf)
 {
-//    QMutexLocker locker(&mMutex);
-    // diagnostic output
+    QMutexLocker locker(&mMutex);
+
+    double tmp[mFPP * mNumChannels];
+    for (unsigned int i = 0; i < mFPP; i++) {
+        for (unsigned int j = 0; j < mNumChannels; j++) {
+            unsigned int index = i * mNumChannels + j;
+            tmp[index] = *buf++ / 32767.0; // input signals
+            //                        if (j)
+            //                            std::cout << "UDP rcv:  " << tmp[index] << std::endl;
+            //                        else
+            //                        std::cout << "\t " << tmp[index] << std::endl;
+//            *inBuffery++ = tmp[index] * SCALE;
+        }
+    }
     /////////////////////
-//    for (unsigned int i = 0; i < mFPP; i++) {
-//        for (unsigned int j = 0; j < mNumChannels; j++) {
-//            unsigned int index = i * mNumChannels + j;
-//            sampleToBits(0.7 * sin(mPhasor[j]), j, i);
-//            mPhasor[j] += (!j) ? 0.2 : 0.201;
-//        }
-//    }
+    for (unsigned int i = 0; i < mFPP; i++) {
+        for (unsigned int j = 0; j < mNumChannels; j++) {
+            unsigned int index = i * mNumChannels + j;
+            sampleToBits(tmp[index], j, i);
+        }
+    }
     /////////////////////
     memcpy(buf, mXfrBuffer, mBytes);
-//    std::cout << "dummyPacket \n";
 };
 
 //*******************************************************************************
 void Regulator::sineTestPacket(MY_TYPE* buf)
 {
+//#define CALLED_WITHIN_REG
+#ifndef CALLED_WITHIN_REG
     QMutexLocker locker(&mMutex);
+#endif
     // diagnostic output
     /////////////////////
     for (unsigned int i = 0; i < mFPP; i++) {
@@ -379,7 +401,9 @@ void Regulator::sineTestPacket(MY_TYPE* buf)
         }
     }
     /////////////////////
+#ifndef CALLED_WITHIN_REG
     memcpy(buf, mXfrBuffer, mBytes);
+#endif
 };
 
 //*******************************************************************************
@@ -389,6 +413,7 @@ void Regulator::pullPacket(int8_t* buf)
 //    std::cout << "pullPacket \n";
     mSkip = 0;
     if ((mLastSeqNumIn == -1) || (!mFPPratioIsSet)) {
+//                std::cout << "ZERO_OUTPUT " << mLastSeqNumOut << "\n";
         goto ZERO_OUTPUT;
     } else {
         mLastSeqNumOut++;
@@ -406,9 +431,12 @@ void Regulator::pullPacket(int8_t* buf)
             mLastSeqNumOut = next;
             if (mIncomingTiming[next] > now) {
                 memcpy(mXfrBuffer, mSlots[mLastSeqNumOut % mNumSlots], mBytes);
+//                sineTestPacket((MY_TYPE*)mXfrBuffer);
+//                std::cout << "ok " << mLastSeqNumOut <<  "\tmSkip " << mSkip << "\n";
                 goto PACKETOK;
             }
         }
+        std::cout << "under " << mLastSeqNumOut << "\n";
         goto UNDERRUN;
     }
 
@@ -433,6 +461,7 @@ ZERO_OUTPUT:
     memcpy(mXfrBuffer, mZeros, mBytes);
 
 OUTPUT:
+//    sineTestPacket((MY_TYPE *)mXfrBuffer);
     memcpy(buf, mXfrBuffer, mBytes);
 };
 
@@ -446,6 +475,14 @@ void Regulator::processPacket(bool glitch)
     if (glitch)
         tmp = (double)mIncomingTimer.nsecsElapsed();
 
+//    if (glitch) mGlitchCnt++; // !!!!!!!!!!!!!!!!!!
+//    int glitchReport = mGlitchCnt%100; // !!!!!!!!!!!!!!!!!
+//    if (!glitchReport) std::cout << mGlitchCnt
+//            << " over "
+//            << pullStat->plcOverruns
+//            << " under "
+//            << pullStat->plcUnderruns
+//                                 << "\n"; // !!!!!!!!!!!!!!!!!
     glitch = false; // !!!!!!!!!!!!!!!!!!
 
     for (int ch = 0; ch < mNumChannels; ch++)
@@ -854,15 +891,17 @@ void StdDev::tick()
             longTermMaxAcc += max;
             longTermMax = longTermMaxAcc / (double)longTermCnt;
             if (true)
-                std::cout << std::setw(10) << mean << std::setw(10) << lastMin << std::setw(10) << max
-                     << std::setw(10) << stdDevTmp << std::setw(10) << longTermStdDev << " " << mId
+                std::cout << std::setw(10) << mean << std::setw(10) << lastMin
+                          << std::setw(10) << max
+                     << std::setw(10) << stdDevTmp << std::setw(10)
+                     << longTermStdDev << " " << mId
                      << std::endl;
         } else if (false) //  !!!!!!!!!!!!!!!!!!!1
             std::cout << "printing directly from Regulator->stdDev->tick:\n (mean / min / "
                     "max / "
                     "stdDev / longTermStdDev) \n";
 
-//        longTermCnt++; !!!!!!!!!!!!!!!!!!!1
+//        longTermCnt++; // !!!!!!!!!!!!!!!!!!!1
         lastMean         = mean;
         lastMin          = min;
         lastMax          = max;

@@ -82,18 +82,17 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
                                   void * /* data */ ) // last arg is used for "this"
 {
     if ( streamTime >= m_streamTimePrintTime ) {
-        std::cout << " networkAudio_callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
+        //        std::cout << " networkAudio_callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
         m_streamTimePrintTime += m_streamTimePrintIncrement;
     }
     if (true) {
         seq++;
         seq %= 65536;
-        if (seq%500 == 0)
-            std::cout << "packet to network = " << seq << std::endl;
+        //        if (seq%500 == 0) std::cout << "packet to network = " << seq << std::endl;
 
         // push internally for test, works correctly
-//        mRegFromHackTrip->sineTestPacket((MY_TYPE *)mZeros->data());
-//        mRegFromHackTrip->shimFPPx((MY_TYPE *)mZeros->data(), 999, seq);
+        //        mRegFromHackTrip->sineTestPacket((MY_TYPE *)mZeros->data());
+        //        mRegFromHackTrip->shimFPPx((MY_TYPE *)mZeros->data(), 999, seq);
 
 
         //////////// diagnostic send
@@ -125,7 +124,8 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
     mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
 
     //////////////// all forms ok below
-    ////        mRegFromHackTrip->sineTestPacket((MY_TYPE *)mZeros->data());
+    //    mRegFromHackTrip->sineTestPacket((MY_TYPE *)outputBuffer);
+    //            mRegFromHackTrip->sineTestPacket((MY_TYPE *)mZeros->data());
     //        MY_TYPE *inBuffer = (MY_TYPE *)inputBuffer;
     ////        MY_TYPE *inBuffer = (MY_TYPE *)mZeros->data();
     //                        MY_TYPE *outBuffer = (MY_TYPE *)outputBuffer;
@@ -400,7 +400,7 @@ UDP::UDP( int audioDataLen, Regulator * reg)
     sendSock.setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
     int ret = 0;
     ret = sendSock.bind(HackTrip::mAudioPort);
-    std::cout << "UDP send: start = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
+    //    std::cout << "UDP send: start = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
 
     msleep(100);
 };
@@ -468,42 +468,63 @@ void UDP::run() {
             if (len != mBuf.size())
                 std::cout << "UDP rcv: not full packet (" << len << ") should be " << mBuf.size() << std::endl;
             else {
+                //                std::cout << "UDP rcv: size (" << len << ") should be " << mBuf.size() << std::endl;
                 memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
                 seq = mHeader.SeqNumber;
-                if (seq%500 == 0)
-                    std::cout << "UDP rcv: seq = " << seq << std::endl;
+                //                if (seq%500 == 0) std::cout << "UDP rcv: seq = " << seq << std::endl;
                 // this should be a push
                 int8_t * inBufferx;
                 inBufferx = (int8_t *)mBuf.data() + sizeof(HeaderStruct);
-//                inBuffer = (MY_TYPE *)inBufferx;
+                mInBuffer = (MY_TYPE *)inBufferx;
 
-                // convert non-interleaved wire format to internal interleaved
-                int N       = mAudioDataLen / HackTrip::mChannels / 2;
-                int8_t* src = (int8_t *)inBufferx;
                 QByteArray tmpAudioBuf;
                 tmpAudioBuf.resize(mAudioDataLen);
                 tmpAudioBuf.fill(0,mAudioDataLen);
-                if (1 != HackTrip::mChannels) {
-                    // Convert packet's non-interleaved layout to interleaved one used internally
-                    //                    int8_t* dst = mBuffer.data();
-                    int C       = qMin(HackTrip::mChannels, HackTrip::mChannels);
-                    for (int n = 0; n < N; ++n) {
-                        for (int c = 0; c < C; ++c) {
-                            memcpy(tmpAudioBuf.data() + (n * HackTrip::mChannels + c) * 2,
-                                   src + (n + c * N) * 2, 2);
-                        }
-                    }
-                }
+                MY_TYPE * inBuffery = (MY_TYPE *)tmpAudioBuf.data();
+                MY_TYPE * inBufferz = (MY_TYPE *)tmpAudioBuf.data();
+
+                //////////// diagnostic rcv
+//                double tmp[HackTrip::mFPP * HackTrip::mChannels];
+//                for (unsigned int i = 0; i < HackTrip::mFPP; i++) {
+//                    for (unsigned int j = 0; j < HackTrip::mChannels; j++) {
+//                        unsigned int index = i * HackTrip::mChannels + j;
+//                        tmp[index] = *mInBuffer++ / SCALE; // input signals
+//                        //                        if (j)
+//                        //                            std::cout << "UDP rcv:  " << tmp[index] << std::endl;
+//                        //                        else
+//                        //                        std::cout << "\t " << tmp[index] << std::endl;
+//                        *inBuffery++ = tmp[index] * SCALE;
+//                    }
+//                }
+
+                //                // convert non-interleaved wire format to internal interleaved
+                //                int N       = mAudioDataLen / HackTrip::mChannels / 2;
+                //                int8_t* src = (int8_t *)inBufferx;
+                //                QByteArray tmpAudioBuf;
+                //                tmpAudioBuf.resize(mAudioDataLen);
+                //                tmpAudioBuf.fill(0,mAudioDataLen);
+                //                if (1 != HackTrip::mChannels) {
+                //                    // Convert packet's non-interleaved layout to interleaved one used internally
+                //                    //                    int8_t* dst = mBuffer.data();
+                //                    int C       = qMin(HackTrip::mChannels, HackTrip::mChannels);
+                //                    for (int n = 0; n < N; ++n) {
+                //                        for (int c = 0; c < C; ++c) {
+                //                            memcpy(tmpAudioBuf.data() + (n * HackTrip::mChannels + c) * 2,
+                //                                   src + (n + c * N) * 2, 2);
+                //                        }
+                //                    }
+                //                }
 
                 ////////////// works correctly
-//                mRegFromHackTrip->sineTestPacket((MY_TYPE *)tmpAudioBuf.data());
+                //                mRegFromHackTrip->sineTestPacket((MY_TYPE *)tmpAudioBuf.data());
                 ////////////// works correctly
-                //        mRegFromHackTrip->sineTestPacket((MY_TYPE *)mZeros->data());
-                //        mRegFromHackTrip->shimFPPx((MY_TYPE *)mZeros->data(), 999, seq);
-                mRegFromHackTrip->shimFPPx((MY_TYPE *)tmpAudioBuf.data(), 999, seq);
+                //                mRegFromHackTrip->sineTestPacket(mInBuffer);
+                mRegFromHackTrip->rcvPacket(mInBuffer);
+                mRegFromHackTrip->shimFPPy(mInBuffer, 999, seq);
             }
         } // network
-//                msleep(1);
+        //                msleep(1);
+        usleep(1); // drops the load from 100% down to reasonable
     }
     rcvSock.close();
     std::cout << "after rcvSock.close() " << std::endl;
@@ -532,8 +553,7 @@ void UDP::send(int seq, MY_TYPE *audioBuf) {
 
     memcpy(mBuf.data()+sizeof(HeaderStruct),tmpAudioBuf,mAudioDataLen);
     sendSock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
-    if (seq%500 == 0)
-        std::cout << "UDP send: packet = " << seq << std::endl;
+    //    if (seq%500 == 0) std::cout << "UDP send: packet = " << seq << std::endl;
 }
 
 void UDP::stop()

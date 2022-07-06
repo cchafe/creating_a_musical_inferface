@@ -151,6 +151,7 @@ class StdDev
     int ctr;
     int longTermCnt;
 };
+#include <iostream>
 
 class Regulator
 {
@@ -161,6 +162,23 @@ class Regulator
     void shimFPPx(const MY_TYPE* buf, int len, int seq_num) {
         shimFPP((int8_t *)buf, len, seq_num);
     };
+
+    void shimFPPy(MY_TYPE* buf, int len, int seq_num) {
+//        double tmp[256 * 2];
+//        for (unsigned int i = 0; i < 256; i++) {
+//            for (unsigned int j = 0; j < 2; j++) {
+//                unsigned int index = i * 2 + j;
+//                tmp[index] = *buf++ / 32767.0; // input signals
+//                if (j)
+//                    std::cout << "shimFPPy rcv:  " << tmp[index] << std::endl;
+//                else
+//                std::cout << "\t " << tmp[index] << std::endl;
+//            }
+//        }
+
+        shimFPP((int8_t *)buf, len, seq_num);
+    };
+
     void shimFPP(const int8_t* buf, int len, int seq_num);
     void pushPacket(const int8_t* buf, int seq_num);
     // can hijack unused2 to propagate incoming seq num if needed
@@ -177,7 +195,7 @@ class Regulator
     }
 
     void pullPacket(int8_t* buf);
-    void dummyPacket(int8_t* buf);
+    void rcvPacket(MY_TYPE* buf);
     void sineTestPacket(MY_TYPE *buf);
 
     virtual void readSlotNonBlocking(int8_t* ptrToReadSlot) { pullPacket(ptrToReadSlot); }
@@ -235,6 +253,7 @@ class Regulator
     void changeGlobal_2(int);
     void changeGlobal_3(int);
     void printParams();
-    QMutex mMutex;                     ///< Mutex to protect read and write operations
+    QMutex mMutex;                  ///< Mutex to protect read and write operations
+    int mGlitchCnt; // !!!!!!!!!!!!!!!!!!
 };
 #endif  //__REGULATOR_H__

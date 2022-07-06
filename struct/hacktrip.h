@@ -62,7 +62,7 @@ private:
     bool mStop;
     bool mTest;
     bool mRcv;
-    MY_TYPE *inBuffer;
+    MY_TYPE *mInBuffer;
     QByteArray *mZeros;
     std::vector<double> mPhasor;
 };
@@ -129,7 +129,7 @@ private:
     static const int mSocketWaitMs = 1500;
     static const int mSampleRate = 48000;
     static const int mChannels = 2;
-    static const int mBufferQueueLength = 3;
+    static const int mBufferQueueLength = 30;
     static const int mNumberOfBuffersRtAudio = 2;
     friend class TCP;
     friend class UDP;
