@@ -131,16 +131,15 @@ private:
     static const int mChannels = 2;
     static const int mBufferQueueLength = 30;
     static const int mNumberOfBuffersRtAudio = 2;
+    static const int mBytesPerSample = sizeof(MY_TYPE);
+    static const int mAudioDataLen = mFPP * mChannels * mBytesPerSample;
     friend class TCP;
     friend class UDP;
     friend class Audio;
     TCP mTcpClient;
-//    UDP *mUdpFake;
-//    UDP *mUdpSend;
-//    UDP *mUdpRcv;
     UDP *mUdp; // main thread is send, qthread is rcv
     Audio *mAudio;
-    int audioDataLen;
+    static void audioToNetworkConvert(MY_TYPE *audioBuf, QByteArray *tmpAudioBuf);
 };
 
 

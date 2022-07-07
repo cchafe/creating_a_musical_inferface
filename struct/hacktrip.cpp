@@ -28,11 +28,10 @@
 
 HackTrip::HackTrip()
 {
-    audioDataLen = mFPP * mChannels * sizeof(MY_TYPE);
     mReg = new Regulator(mChannels, sizeof(MY_TYPE),
                          mFPP, mBufferQueueLength);
-    mUdp = new UDP(audioDataLen, mReg);
-    mAudio = new Audio(audioDataLen, mReg, mUdp);
+    mUdp = new UDP(mAudioDataLen, mReg);
+    mAudio = new Audio(mAudioDataLen, mReg, mUdp);
 }
 
 void HackTrip::start()
@@ -459,15 +458,16 @@ void UDP::run() {
     //    int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
     unsigned long uSecPeriod = (222.0/48000.0) * 1000000.0;
     mStop = false;
-    while (!mStop) {
+    while (mStop) {
         //            std::cout << "UDP check incoming " << rcvSock.pendingDatagramSize() << std::endl;
-        if (rcvSock.hasPendingDatagrams()) {
+        if (rcvSock.hasPendingDatagrams())
+        {
             //                std::cout << "UDP rcv: pending bytes = " << sock.pendingDatagramSize() << std::endl;
             int len = rcvSock.readDatagram(mBuf.data(), mBuf.size());
             //                std::cout << "UDP rcv: bytes = " << len << std::endl;
-            if (len != mBuf.size())
+            if (len != mBuf.size()) {
                 std::cout << "UDP rcv: not full packet (" << len << ") should be " << mBuf.size() << std::endl;
-            else {
+            } else {
                 //                std::cout << "UDP rcv: size (" << len << ") should be " << mBuf.size() << std::endl;
                 memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
                 seq = mHeader.SeqNumber;
@@ -519,8 +519,8 @@ void UDP::run() {
                 //                mRegFromHackTrip->sineTestPacket((MY_TYPE *)tmpAudioBuf.data());
                 ////////////// works correctly
                 //                mRegFromHackTrip->sineTestPacket(mInBuffer);
-                mRegFromHackTrip->rcvPacket(mInBuffer);
-                mRegFromHackTrip->shimFPPy(mInBuffer, 999, seq);
+//                mRegFromHackTrip->rcvPacket(mInBuffer);
+//                mRegFromHackTrip->shimFPPy(mInBuffer, 999, seq);
             }
         } // network
         //                msleep(1);
@@ -530,26 +530,32 @@ void UDP::run() {
     std::cout << "after rcvSock.close() " << std::endl;
 }
 
+void HackTrip::audioToNetworkConvert(MY_TYPE *audioBuf, QByteArray *tmpAudioBuf) {
+    // convert internal interleaved to non-interleaved wire format
+    int8_t* src = (int8_t*)audioBuf;
+    if (1 < HackTrip::mChannels) {
+        // Convert internal interleaved layout to non-interleaved
+        int N       = mAudioDataLen / mChannels / mBytesPerSample;
+        int8_t* dst = (int8_t*)tmpAudioBuf->data();
+        for (int n = 0; n < N; ++n) {
+            for (int c = 0; c < HackTrip::mChannels; ++c) {
+                memcpy(dst + (n + c * N) * mBytesPerSample,
+                       src + (n * HackTrip::mChannels + c) * mBytesPerSample,
+                       mBytesPerSample);
+            }
+        }
+    }
+
+};
+
 void UDP::send(int seq, MY_TYPE *audioBuf) {
     mHeader.SeqNumber = (uint16_t)seq;
     memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
 
-    // convert internal interleaved to non-interleaved wire format
-    int8_t* src = (int8_t*)audioBuf;
     QByteArray tmpAudioBuf;
     tmpAudioBuf.resize(mAudioDataLen);
     tmpAudioBuf.fill(0,mAudioDataLen);
-    if (1 < HackTrip::mChannels) {
-        // Convert internal interleaved layout to non-interleaved
-        int N       = mAudioDataLen / HackTrip::mChannels / 2;
-        int8_t* dst = (int8_t*)tmpAudioBuf.data();
-        for (int n = 0; n < N; ++n) {
-            for (int c = 0; c < HackTrip::mChannels; ++c) {
-                memcpy(dst + (n + c * N) * 2, src + (n * HackTrip::mChannels + c) * 2,
-                       2);
-            }
-        }
-    }
+HackTrip::audioToNetworkConvert(audioBuf, &tmpAudioBuf);
 
     memcpy(mBuf.data()+sizeof(HeaderStruct),tmpAudioBuf,mAudioDataLen);
     sendSock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
