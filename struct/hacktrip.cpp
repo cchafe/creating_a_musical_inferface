@@ -36,14 +36,12 @@ HackTrip::HackTrip()
 
 void HackTrip::start()
 {
-//    mUdp->start();
     mAudio->start();
 }
 
 void HackTrip::stop()
 {
-//    mUdp->stop();
-//    mUdp->wait();
+    mUdp->stop();
     mAudio->stop();
 }
 
@@ -99,7 +97,7 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
 
         // write sines to mXfr, memcpy mXfr to mZeros
                 mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
-//                mUdpSend->send(seq,(int8_t *)mZeros->data());
+                mUdpSend->send(seq,(int8_t *)mZeros->data());
 //        mUdpSend->send(seq,(int8_t *)inputBuffer);
 
     }
@@ -386,26 +384,25 @@ UDP::UDP(Regulator * reg)
     int optval = 1;
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
                (void *) &optval, sizeof(optval));
-    mSock = new QUdpSocket(this);
-    mSock->setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
+    mSockSend = new QUdpSocket(this);
+    mSockSend->setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
     int ret = 0;
-    ret = mSock->bind(HackTrip::mAudioPort);
-//    ret = rcvSock.bind(QHostAddress::Any, HackTrip::mAudioPort);
-    std::cout << "UDP: start = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
+    ret = mSockSend->bind(HackTrip::mAudioPort);
+    std::cout << "UDP: start send = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
 
-    connect(mSock, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
+    connect(mSockSend, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
 };
 
 void UDP::readPendingDatagrams() {
     //read datagrams in a loop to make sure that all received datagrams are processed
     //since readyRead() is emitted for a datagram only when all previous datagrams are read
-    while(mSock->hasPendingDatagrams()){
+    while(mSockSend->hasPendingDatagrams()){
         QByteArray datagram;
-        datagram.resize(mSock->pendingDatagramSize());
+        datagram.resize(mSockSend->pendingDatagramSize());
         QHostAddress sender;
         quint16 senderPort;
 
-        mSock->readDatagram(datagram.data(), datagram.size(),
+        mSockSend->readDatagram(datagram.data(), datagram.size(),
                                 &sender, &senderPort);
 
         memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
@@ -492,7 +489,7 @@ void UDP::send(int seq, int8_t *audioBuf) {
     mHeader.SeqNumber = (uint16_t)seq;
     memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
     memcpy(mBuf.data()+sizeof(HeaderStruct),audioBuf,HackTrip::mAudioDataLen);
-    mSock->writeDatagram(mBuf, serverHostAddress, mPeerPort);
+    mSockSend->writeDatagram(mBuf, serverHostAddress, mPeerPort);
     if (seq%500 == 0)
         std::cout << "UDP send: packet = " << seq << std::endl;
 }
@@ -506,9 +503,9 @@ void UDP::stop()
         std::cout << "sending exit packet" << std::endl;
         mBuf.resize(controlPacketSize);
         mBuf.fill(0xff,controlPacketSize);
-        mSock->writeDatagram(mBuf, serverHostAddress, mPeerPort);
-        mSock->writeDatagram(mBuf, serverHostAddress, mPeerPort);
-        mSock->close();
+        mSockSend->writeDatagram(mBuf, serverHostAddress, mPeerPort);
+        mSockSend->writeDatagram(mBuf, serverHostAddress, mPeerPort);
+        mSockSend->close();
     }
 }
 

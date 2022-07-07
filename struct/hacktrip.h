@@ -9,11 +9,11 @@
 #include "regulator.h"
 
 //const QString gServer = "54.193.131.283";
-const QString gServer = "jackloop256.stanford.edu";
+//const QString gServer = "jackloop256.stanford.edu";
 //const QString gServer = "cmn55.stanford.edu";
 //const QString gServer = "cmn9.stanford.edu";
 //const QString gServer = "171.64.197.158";
-//const QString gServer = "127.0.0.1"; // don't use "loopback", doesn't resolve
+const QString gServer = "127.0.0.1"; // don't use "loopback", doesn't resolve
 typedef signed short MY_TYPE; // audio interface data is 16bit ints
 #define FORMAT RTAUDIO_SINT16 // which has this rtaudio name
 #define SCALE 32767.0 // audio samples for processing are doubles, so this is the conversion
@@ -43,7 +43,7 @@ public:
 
 class UDP : public QObject
 {
-    Q_OBJECT
+//    Q_OBJECT
 
 public:
     UDP(Regulator * reg = 0);
@@ -52,7 +52,7 @@ public:
     void stop();
     void send(int seq, int8_t *audioBuf);
 private:
-    QUdpSocket *mSock;
+    QUdpSocket *mSockSend;
     QHostAddress serverHostAddress;
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
@@ -65,7 +65,7 @@ private:
     MY_TYPE *inBuffer;
     QByteArray *mZeros;
     std::vector<double> mPhasor;
-private slots:
+public slots:
     void readPendingDatagrams();
 };
 
