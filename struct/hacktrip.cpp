@@ -28,11 +28,10 @@
 
 HackTrip::HackTrip()
 {
-    audioDataLen = mFPP * mChannels * sizeof(MY_TYPE);
     mReg = new Regulator(mChannels, sizeof(MY_TYPE),
                          mFPP, mBufferQueueLength);
-    mUdp = new UDP(audioDataLen, mReg);
-    mAudio = new Audio(audioDataLen, mReg, mUdp);
+    mUdp = new UDP(mReg);
+    mAudio = new Audio(mReg, mUdp);
 }
 
 void HackTrip::start()
@@ -54,15 +53,15 @@ HackTrip:: ~HackTrip() {
     delete mUdp;
 }
 
-Audio::Audio(int audioDataLen, Regulator * reg, UDP *udpSend)
+Audio::Audio(Regulator * reg, UDP *udpSend)
     : mRegFromHackTrip(reg)
     , mUdpSend(udpSend)
 {
     m_adac = 0;
     mPhasor.resize(2, 0.0); //HackTrip::mChannels
     mZeros = new QByteArray();
-    mZeros->resize(audioDataLen);
-    mZeros->fill(0,audioDataLen);
+    mZeros->resize(HackTrip::mAudioDataLen);
+    mZeros->fill(0,HackTrip::mAudioDataLen);
     seq = 0;
 };
 
@@ -356,13 +355,12 @@ void TCP::sendToHost()
 //#include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/types.h>
-UDP::UDP( int audioDataLen, Regulator * reg)
-    : mAudioDataLen(audioDataLen)
-    , mRegFromHackTrip(reg)
+UDP::UDP(Regulator * reg)
+    : mRegFromHackTrip(reg)
 {
     mZeros = new QByteArray();
-    mZeros->resize(mAudioDataLen);
-    mZeros->fill(0,mAudioDataLen);
+    mZeros->resize(HackTrip::mAudioDataLen);
+    mZeros->fill(0,HackTrip::mAudioDataLen);
     mPhasor.resize(2, 0.0); //HackTrip::mChannels
 
     mHeader.TimeStamp = (uint64_t)0;
@@ -372,7 +370,7 @@ UDP::UDP( int audioDataLen, Regulator * reg)
     mHeader.BitResolution = (uint8_t)sizeof(MY_TYPE) * 8; // checked in jacktrip
     mHeader.NumIncomingChannelsFromNet = HackTrip::mChannels;
     mHeader.NumOutgoingChannelsToNet = HackTrip::mChannels;
-    int packetDataLen = sizeof(HeaderStruct) + audioDataLen;
+    int packetDataLen = sizeof(HeaderStruct) + HackTrip::mAudioDataLen;
     mBuf.resize(packetDataLen);
     mBuf.fill(0,packetDataLen);
     memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
@@ -388,108 +386,113 @@ UDP::UDP( int audioDataLen, Regulator * reg)
     int optval = 1;
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
                (void *) &optval, sizeof(optval));
-    sendSock.setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
+    mSock = new QUdpSocket(this);
+    mSock->setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
     int ret = 0;
-    ret = sendSock.bind(HackTrip::mAudioPort);
-    std::cout << "UDP send: start = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
+    ret = mSock->bind(HackTrip::mAudioPort);
+//    ret = rcvSock.bind(QHostAddress::Any, HackTrip::mAudioPort);
+    std::cout << "UDP: start = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
 
-    msleep(100);
+    connect(mSock, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
 };
 
-void UDP::run() {
-    int audioDataLen = HackTrip::mFPP * HackTrip::mChannels * sizeof(MY_TYPE);
-    mHeader.TimeStamp = (uint64_t)0;
-    mHeader.SeqNumber = (uint16_t)0;
-    mHeader.BufferSize = (uint16_t)HackTrip::mFPP;
-    mHeader.SamplingRate = (uint8_t)3;
-    mHeader.BitResolution = (uint8_t)sizeof(MY_TYPE) * 8; // checked in jacktrip
-    mHeader.NumIncomingChannelsFromNet = HackTrip::mChannels;
-    mHeader.NumOutgoingChannelsToNet = HackTrip::mChannels;
-    int packetDataLen = sizeof(HeaderStruct) + audioDataLen;
-    mBuf.resize(packetDataLen);
-    mBuf.fill(0,packetDataLen);
-    memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
+void UDP::readPendingDatagrams() {
+    //read datagrams in a loop to make sure that all received datagrams are processed
+    //since readyRead() is emitted for a datagram only when all previous datagrams are read
+    while(mSock->hasPendingDatagrams()){
+        QByteArray datagram;
+        datagram.resize(mSock->pendingDatagramSize());
+        QHostAddress sender;
+        quint16 senderPort;
 
-    std::cout << "Default Packet Header: Buffer Size = "
-              << static_cast<int>(mHeader.BufferSize) << std::endl;
-    // Get the sample rate in Hz from the AudioInterface::samplingRateT
-    //    int sample_rate = mHeader.SamplingRate;
-    // socket needs to be created here in this thread
-    QUdpSocket rcvSock;
-    //    QHostAddress serverHostAddress;
+        mSock->readDatagram(datagram.data(), datagram.size(),
+                                &sender, &senderPort);
 
-    if(false) {
-        std::cout << "UDP test: start " << std::endl;
-        int audioDataLen = HackTrip::mFPP*HackTrip::mChannels*sizeof(MY_TYPE);
-        mZeros = new QByteArray();
-        mZeros->resize(audioDataLen);
-        mZeros->fill(0,audioDataLen);
-    } else {
-        //        if (!serverHostAddress.setAddress(gServer)) {
-        //            QHostInfo info = QHostInfo::fromName(gServer);
-        //            if (!info.addresses().isEmpty()) {
-        //                // use the first IP address
-        //                serverHostAddress = info.addresses().constFirst();
-        //            }
-        //        }
-        mPeerPort = 61002;
-        int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-        int optval = 1;
-        setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
-                   (void *) &optval, sizeof(optval));
-        rcvSock.setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
-        int ret = 0;
-        ret = rcvSock.bind(QHostAddress::Any, HackTrip::mAudioPort);
-        std::cout << "UDP rcv: start = " << ret << std::endl;
-
-
-        msleep(100);
+        memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
+        int seq = mHeader.SeqNumber;
+        if (seq%500 == 0)
+            std::cout << "UDP rcv: seq = " << seq << std::endl;
+        // this should be a push
+        inBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
+        mRegFromHackTrip->shimFPP((int8_t *)inBuffer, mBuf.size(), seq);
     }
-
-    int seq = 0;
-    //    int audioDataLen = gFPP*2*2;
-    //    int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
-    unsigned long uSecPeriod = (222.0/48000.0) * 1000000.0;
-    mStop = false;
-    while (!mStop) {
-        //            std::cout << "UDP check incoming " << rcvSock.pendingDatagramSize() << std::endl;
-        if (rcvSock.hasPendingDatagrams()) {
-            //                std::cout << "UDP rcv: pending bytes = " << sock.pendingDatagramSize() << std::endl;
-            int len = rcvSock.readDatagram(mBuf.data(), mBuf.size());
-            //                std::cout << "UDP rcv: bytes = " << len << std::endl;
-            if (len != mBuf.size())
-                std::cout << "UDP rcv: not full packet (" << len << ") should be " << mBuf.size() << std::endl;
-            else {
-                memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
-                seq = mHeader.SeqNumber;
-                if (seq%500 == 0)
-                    std::cout << "UDP rcv: seq = " << seq << std::endl;
-                // this should be a push
-                inBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
-                mRegFromHackTrip->shimFPP((int8_t *)inBuffer, len, seq);
-            }
-        } // network
-//        msleep(1);
-    }
-    //    if (!mRcv) {
-    //        // Send exit packet (with 1 redundant packet).
-    //        int controlPacketSize = 63;
-    //        std::cout << "sending exit packet" << std::endl;
-    //        mBuf.resize(controlPacketSize);
-    //        mBuf.fill(0xff,controlPacketSize);
-    //        sendSock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
-    //        sendSock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
-    //        sendSock.close();
-    //    }
-    rcvSock.close();
-    std::cout << "after rcvSock.close() " << std::endl;
 }
+
+//void UDP::run() {
+//    int audioDataLen = HackTrip::mFPP * HackTrip::mChannels * sizeof(MY_TYPE);
+
+//    std::cout << "Default Packet Header: Buffer Size = "
+//              << static_cast<int>(mHeader.BufferSize) << std::endl;
+//    // Get the sample rate in Hz from the AudioInterface::samplingRateT
+//    //    int sample_rate = mHeader.SamplingRate;
+//    // socket needs to be created here in this thread
+//    QUdpSocket rcvSock;
+//    //    QHostAddress serverHostAddress;
+
+//    if(false) {
+//        std::cout << "UDP test: start " << std::endl;
+//        int audioDataLen = HackTrip::mFPP*HackTrip::mChannels*sizeof(MY_TYPE);
+//        mZeros = new QByteArray();
+//        mZeros->resize(audioDataLen);
+//        mZeros->fill(0,audioDataLen);
+//    } else {
+//        //        if (!serverHostAddress.setAddress(gServer)) {
+//        //            QHostInfo info = QHostInfo::fromName(gServer);
+//        //            if (!info.addresses().isEmpty()) {
+//        //                // use the first IP address
+//        //                serverHostAddress = info.addresses().constFirst();
+//        //            }
+//        //        }
+//        std::cout << "UDP rcv: start = " << ret << std::endl;
+
+
+//        msleep(100);
+//    }
+
+//    int seq = 0;
+//    //    int audioDataLen = gFPP*2*2;
+//    //    int packetDataLen = sizeof(HeaderStruct)+audioDataLen;
+//    unsigned long uSecPeriod = (222.0/48000.0) * 1000000.0;
+//    mStop = false;
+//    while (!mStop) {
+//        //            std::cout << "UDP check incoming " << rcvSock.pendingDatagramSize() << std::endl;
+//        if (rcvSock.hasPendingDatagrams()) {
+//            //                std::cout << "UDP rcv: pending bytes = " << sock.pendingDatagramSize() << std::endl;
+//            int len = rcvSock.readDatagram(mBuf.data(), mBuf.size());
+//            //                std::cout << "UDP rcv: bytes = " << len << std::endl;
+//            if (len != mBuf.size())
+//                std::cout << "UDP rcv: not full packet (" << len << ") should be " << mBuf.size() << std::endl;
+//            else {
+//                memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
+//                seq = mHeader.SeqNumber;
+//                if (seq%500 == 0)
+//                    std::cout << "UDP rcv: seq = " << seq << std::endl;
+//                // this should be a push
+//                inBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
+//                mRegFromHackTrip->shimFPP((int8_t *)inBuffer, len, seq);
+//            }
+//        } // network
+////        msleep(1);
+//    }
+//    //    if (!mRcv) {
+//    //        // Send exit packet (with 1 redundant packet).
+//    //        int controlPacketSize = 63;
+//    //        std::cout << "sending exit packet" << std::endl;
+//    //        mBuf.resize(controlPacketSize);
+//    //        mBuf.fill(0xff,controlPacketSize);
+//    //        sendSock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
+//    //        sendSock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
+//    //        sendSock.close();
+//    //    }
+//    rcvSock.close();
+//    std::cout << "after rcvSock.close() " << std::endl;
+//}
 
 void UDP::send(int seq, int8_t *audioBuf) {
     mHeader.SeqNumber = (uint16_t)seq;
     memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
-    memcpy(mBuf.data()+sizeof(HeaderStruct),audioBuf,mAudioDataLen);
-    sendSock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
+    memcpy(mBuf.data()+sizeof(HeaderStruct),audioBuf,HackTrip::mAudioDataLen);
+    mSock->writeDatagram(mBuf, serverHostAddress, mPeerPort);
     if (seq%500 == 0)
         std::cout << "UDP send: packet = " << seq << std::endl;
 }
@@ -503,9 +506,9 @@ void UDP::stop()
         std::cout << "sending exit packet" << std::endl;
         mBuf.resize(controlPacketSize);
         mBuf.fill(0xff,controlPacketSize);
-        sendSock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
-        sendSock.writeDatagram(mBuf, serverHostAddress, mPeerPort);
-        sendSock.close();
+        mSock->writeDatagram(mBuf, serverHostAddress, mPeerPort);
+        mSock->writeDatagram(mBuf, serverHostAddress, mPeerPort);
+        mSock->close();
     }
 }
 

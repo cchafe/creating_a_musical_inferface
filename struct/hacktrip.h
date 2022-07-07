@@ -41,19 +41,19 @@ public:
     uint8_t NumOutgoingChannelsToNet;    ///< Number of outgoing Channels to the network
 };
 
-class UDP : public QThread
+class UDP : public QObject
 {
+    Q_OBJECT
+
 public:
-    UDP(int audioDataLen, Regulator * reg = 0);
+    UDP(Regulator * reg = 0);
 
     void test();
     void stop();
     void send(int seq, int8_t *audioBuf);
 private:
-    int mAudioDataLen;
-    QUdpSocket sendSock;
+    QUdpSocket *mSock;
     QHostAddress serverHostAddress;
-    virtual void run();
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
     Regulator * mRegFromHackTrip;
@@ -65,13 +65,15 @@ private:
     MY_TYPE *inBuffer;
     QByteArray *mZeros;
     std::vector<double> mPhasor;
+private slots:
+    void readPendingDatagrams();
 };
 
 
 class Audio
 {
 public:
-    Audio( int audioDataLen, Regulator * reg, UDP * udpSend);
+    Audio(Regulator * reg, UDP * udpSend);
     ~Audio();
     void start();
     void stop();
@@ -124,6 +126,7 @@ public:
 private:
     Regulator * mReg;
     const QString mPort = "4464";
+    static const int mBytesPerSample = sizeof(MY_TYPE);
     static const int mAudioPort = 4464;
     static const int mFPP = 256;
     static const int mSocketWaitMs = 1500;
@@ -131,16 +134,13 @@ private:
     static const int mChannels = 2;
     static const int mBufferQueueLength = 3;
     static const int mNumberOfBuffersRtAudio = 2;
+    static const int mAudioDataLen = mFPP * mChannels * mBytesPerSample;
     friend class TCP;
     friend class UDP;
     friend class Audio;
     TCP mTcpClient;
-//    UDP *mUdpFake;
-//    UDP *mUdpSend;
-//    UDP *mUdpRcv;
-    UDP *mUdp; // main thread is send, qthread is rcv
+    UDP *mUdp;
     Audio *mAudio;
-    int audioDataLen;
 };
 
 
