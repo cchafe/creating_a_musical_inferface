@@ -351,17 +351,39 @@ void Regulator::pushPacket(const int8_t* buf, int seq_num)
 };
 
 //*******************************************************************************
-void Regulator::dummyPacket(int8_t* buf)
+void Regulator::ILtoNonIL(int8_t* buf)
 {
     //    QMutexLocker locker(&mMutex);
     // diagnostic output
 
-    if (false) {
+    // Convert internal interleaved layout to non-interleaved
+        int8_t* src = buf;
+        int8_t* dst = mXfrBuffer;
+        int C       = mNumChannels;
+        int N             = mFPP;
+        int mSmplSize = 2;
+            for (int n = 0; n < N; ++n) {
+                for (int c = 0; c < mNumChannels; ++c) {
+                    memcpy(dst + (n + c * N) * mSmplSize, src + (n * mNumChannels + c) * mSmplSize,
+                           mSmplSize);
+                }
+            }
+//            src = dst;
+
+    memcpy(buf, mXfrBuffer, mBytes);
+};
+
+//*******************************************************************************
+void Regulator::nonILtoIL(int8_t* buf)
+{
+    //    QMutexLocker locker(&mMutex);
+    // diagnostic output
+
         // Convert packet's non-interleaved layout to interleaved one used internally
         int8_t* src = buf;
         int8_t* dst = mXfrBuffer;
         int C       = mNumChannels;
-        int N             = mFPP*2;
+        int N             = mFPP;
         int mSmplSize = 2;
         for (int n = 0; n < N; ++n) {
             for (int c = 0; c < C; ++c) {
@@ -370,17 +392,6 @@ void Regulator::dummyPacket(int8_t* buf)
             }
         }
 //        src = dst;
-    }
-        /////////////////////
-//    for (unsigned int i = 0; i < mFPP; i++) {
-//        for (unsigned int j = 0; j < mNumChannels; j++) {
-//            if (j)
-//                std::cout << bitsToSample(j, i) << "\t\t\t";
-//else
-//                std::cout << bitsToSample(j, i) << "\n";
-//        }
-//    }
-    /////////////////////
     memcpy(buf, mXfrBuffer, mBytes);
 };
 

@@ -160,7 +160,7 @@ int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                   RtAudioStreamStatus status, void *arg)
 {
     //    std::cout << "Stream xxxxxxxxxxxx" << std::endl;
-    //    return static_cast<Audio*>(arg)->inout(
+//        return static_cast<Audio*>(arg)->inout(
     return static_cast<Audio*>(arg)->networkAudio_callback(
                 outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
@@ -431,7 +431,13 @@ void UDP::readPendingDatagrams() {
         if (seq%500 == 0)
             std::cout << "UDP rcv: seq = " << seq << std::endl;
         // this should be a push
-        memcpy(mInBuffer[mWptr],(MY_TYPE *)mBuf.data() + sizeof(HeaderStruct),mBuf.size());
+
+        int8_t *audioBuf = (int8_t *)(mBuf.data() + sizeof(HeaderStruct));
+
+        mRegFromHackTrip->nonILtoIL((int8_t *)audioBuf);
+
+
+        memcpy(mInBuffer[mWptr],audioBuf,mBuf.size());
         mWptr++;
         mWptr %= mRing;
         //        mRegFromHackTrip->shimFPP(
@@ -513,6 +519,9 @@ void UDP::readPendingDatagrams() {
 void UDP::send(int seq, int8_t *audioBuf) {
     mHeader.SeqNumber = (uint16_t)seq;
     memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
+
+    mRegFromHackTrip->ILtoNonIL((int8_t *)audioBuf);
+
     memcpy(mBuf.data()+sizeof(HeaderStruct),audioBuf,HackTrip::mAudioDataLen);
     mSockSend->writeDatagram(mBuf, serverHostAddress, mPeerPort);
     if (seq%500 == 0)
