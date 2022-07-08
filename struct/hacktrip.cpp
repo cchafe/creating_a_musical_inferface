@@ -96,15 +96,19 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
         //        mRegFromHackTrip->shimFPP((int8_t *)mZeros->data(), dontSizeMeFromNetworkPacketYet, seq);
 
         // write sines to mXfr, memcpy mXfr to mZeros
-                mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
-                mUdpSend->send(seq,(int8_t *)mZeros->data());
-//        mUdpSend->send(seq,(int8_t *)inputBuffer);
+        //                mRegFromHackTrip->sineTestPacket((int8_t *)mZeros->data());
+        //                mUdpSend->send(seq,(int8_t *)mZeros->data());
+        mUdpSend->send(seq,(int8_t *)inputBuffer);
 
     }
     if (true) { // DSP block
 
         // this should be a pull
-//        mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
+        //        mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
+        mUdpSend->mRptr = mUdpSend->mWptr-10;
+        if (mUdpSend->mRptr < 0) mUdpSend->mRptr = 0;
+        memcpy(outputBuffer, mUdpSend->mInBuffer[mUdpSend->mRptr],
+                HackTrip::mAudioDataLen);
         //        mRegFromHackTrip->dummyPacket((int8_t *)outputBuffer);
 
         // write sines to mXfr, memcpy mXfr to outputBuffer
@@ -127,9 +131,9 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
         //                    }
         //                }
     }
-//        unsigned int bytes = nBufferFrames*m_channels*sizeof(MY_TYPE);
-        memcpy( inputBuffer, mZeros->data(), bufferBytes);
-        memcpy( outputBuffer, inputBuffer, bufferBytes);
+    //        unsigned int bytes = nBufferFrames*m_channels*sizeof(MY_TYPE);
+    //        memcpy( inputBuffer, mZeros->data(), bufferBytes);
+    //        memcpy( outputBuffer, inputBuffer, bufferBytes);
     return 0;
 }
 
@@ -193,6 +197,7 @@ void Audio::start() {
     //      m_oParams.deviceId = m_adac->getDefaultOutputDevice();
 
     options.flags = RTAUDIO_SCHEDULE_REALTIME; // use realtime priority if it's available
+    // RTAUDIO_NONINTERLEAVED | RTAUDIO_SCHEDULE_REALTIME;
     options.numberOfBuffers = HackTrip::mNumberOfBuffersRtAudio; // Windows DirectSound, Linux OSS, and Linux Alsa APIs only.
     // value set by the user is replaced during execution of the RtAudio::openStream() function by the value actually used by the system
     std::cout << "using default audio interface device\n";
@@ -200,7 +205,7 @@ void Audio::start() {
               << "\tfor input and output\n";
     std::cout << "\tIf another is needed, either change your settings\n";
     std::cout << "\tor the choice in the code\n";
-//    std::cout << "asking for numberOfBuffers = " << options.numberOfBuffers << "\n";
+    //    std::cout << "asking for numberOfBuffers = " << options.numberOfBuffers << "\n";
     // Let RtAudio print messages to stderr.
     m_adac->showWarnings(true);
 
@@ -218,14 +223,14 @@ void Audio::start() {
         std::cout << "\nCouldn't open audio device streams!\n";
         exit(1);
     } else {
-//        if (options.numberOfBuffers) {
-//            std::cout << "\tgot numberOfBuffers = " << options.numberOfBuffers << "\n";
-//        } else {
-            std::cout << "\trunning " <<
-                         m_adac->getApiDisplayName(m_adac->getCurrentApi()) << "\n";
-            std::cout << "\nStream latency = " << m_adac->getStreamLatency()
-                      << " frames" << std::endl;
-//        }
+        //        if (options.numberOfBuffers) {
+        //            std::cout << "\tgot numberOfBuffers = " << options.numberOfBuffers << "\n";
+        //        } else {
+        std::cout << "\trunning " <<
+                     m_adac->getApiDisplayName(m_adac->getCurrentApi()) << "\n";
+        std::cout << "\nStream latency = " << m_adac->getStreamLatency()
+                  << " frames" << std::endl;
+        //        }
     }
     std::cout << "\nAudio stream start" << std::endl;
     if (m_adac->startStream())
@@ -391,7 +396,23 @@ UDP::UDP(Regulator * reg)
     std::cout << "UDP: start send = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
 
     connect(mSockSend, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
+    mRing = 500;
+    mWptr = 0;
+    mRptr = 0;
+    for (int i = 0; i < mRing; i++) {
+        int8_t* tmp = new int8_t[HackTrip::mAudioDataLen];
+        mInBuffer.push_back(tmp);
+    }
 };
+
+UDP:: ~UDP() {
+    delete mSockSend;
+    for (int i = 0; i < mRing; i++) {
+        delete mInBuffer[i];
+    }
+}
+
+//https://stackoverflow.com/questions/40200535/c-qt-qudp-socket-not-sending-receiving-data
 
 void UDP::readPendingDatagrams() {
     //read datagrams in a loop to make sure that all received datagrams are processed
@@ -410,8 +431,12 @@ void UDP::readPendingDatagrams() {
         if (seq%500 == 0)
             std::cout << "UDP rcv: seq = " << seq << std::endl;
         // this should be a push
-        inBuffer = (MY_TYPE *)mBuf.data() + sizeof(HeaderStruct);
-        mRegFromHackTrip->shimFPP((int8_t *)inBuffer, mBuf.size(), seq);
+        memcpy(mInBuffer[mWptr],(MY_TYPE *)mBuf.data() + sizeof(HeaderStruct),mBuf.size());
+        mWptr++;
+        mWptr %= mRing;
+        //        mRegFromHackTrip->shimFPP(
+        //                    (int8_t *)(mBuf.data() + sizeof(HeaderStruct)),
+        //                    mBuf.size(), seq);
     }
 }
 
@@ -496,17 +521,14 @@ void UDP::send(int seq, int8_t *audioBuf) {
 
 void UDP::stop()
 {
-    mStop = true;
-    {
-        // Send exit packet (with 1 redundant packet).
-        int controlPacketSize = 63;
-        std::cout << "sending exit packet" << std::endl;
-        mBuf.resize(controlPacketSize);
-        mBuf.fill(0xff,controlPacketSize);
-        mSockSend->writeDatagram(mBuf, serverHostAddress, mPeerPort);
-        mSockSend->writeDatagram(mBuf, serverHostAddress, mPeerPort);
-        mSockSend->close();
-    }
+    // Send exit packet (with 1 redundant packet).
+    int controlPacketSize = 63;
+    std::cout << "sending exit packet" << std::endl;
+    mBuf.resize(controlPacketSize);
+    mBuf.fill(0xff,controlPacketSize);
+    mSockSend->writeDatagram(mBuf, serverHostAddress, mPeerPort);
+    mSockSend->writeDatagram(mBuf, serverHostAddress, mPeerPort);
+    mSockSend->close();
 }
 
 void UDP::test() {

@@ -47,10 +47,14 @@ class UDP : public QObject
 
 public:
     UDP(Regulator * reg = 0);
-
+    ~UDP();
     void test();
     void stop();
     void send(int seq, int8_t *audioBuf);
+    std::vector<int8_t*> mInBuffer;
+    int mWptr;
+    int mRptr;
+    int mRing;
 private:
     QUdpSocket *mSockSend;
     QHostAddress serverHostAddress;
@@ -62,7 +66,7 @@ private:
     bool mStop;
     bool mTest;
     bool mRcv;
-    MY_TYPE *inBuffer;
+//    MY_TYPE *inBuffer;
     QByteArray *mZeros;
     std::vector<double> mPhasor;
 public slots:

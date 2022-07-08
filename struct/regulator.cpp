@@ -92,11 +92,11 @@ constexpr int ModSeqNumInit = 256;  // bounds on seqnums, 65536 is max in packet
 constexpr int NumSlotsMax   = 128;  // mNumSlots looped for recent arrivals
 constexpr int LostWindowMax = 32;   // mLostWindow looped for recent arrivals
 constexpr double DefaultAutoHeadroom =
-    3.0;                           // msec padding for auto adjusting mMsecTolerance
+        3.0;                           // msec padding for auto adjusting mMsecTolerance
 constexpr double AutoMax = 250.0;  // msec bounds on insane IPI, like ethernet unplugged
 constexpr double AutoInitDur = 6000.0;  // kick in auto after this many msec
 constexpr double AutoInitValFactor =
-    0.5;  // scale for initial mMsecTolerance during init phase if unspecified
+        0.5;  // scale for initial mMsecTolerance during init phase if unspecified
 // tweak
 constexpr int WindowDivisor = 8;     // for faster auto tracking
 constexpr int MaxFPP        = 1024;  // tested up to this FPP
@@ -122,24 +122,24 @@ Regulator::Regulator(int rcvChannels, int bit_res, int FPP, int qLen)
                   << " larger than max FPP = " << MaxFPP << "\n";
         exit(1);
     }
-  switch (mAudioBitRes) {  // int from JitterBuffer to AudioInterface enum
-  case 1:
-      mBitResolutionMode = AudioInterface::audioBitResolutionT::BIT8;
-      break;
-  case 2:
-      mBitResolutionMode = AudioInterface::audioBitResolutionT::BIT16;
-      break;
-  case 3:
-      mBitResolutionMode = AudioInterface::audioBitResolutionT::BIT24;
-      break;
-  case 4:
-      mBitResolutionMode = AudioInterface::audioBitResolutionT::BIT32;
-      break;
-  }
+    switch (mAudioBitRes) {  // int from JitterBuffer to AudioInterface enum
+    case 1:
+        mBitResolutionMode = AudioInterface::audioBitResolutionT::BIT8;
+        break;
+    case 2:
+        mBitResolutionMode = AudioInterface::audioBitResolutionT::BIT16;
+        break;
+    case 3:
+        mBitResolutionMode = AudioInterface::audioBitResolutionT::BIT24;
+        break;
+    case 4:
+        mBitResolutionMode = AudioInterface::audioBitResolutionT::BIT32;
+        break;
+    }
 
     mHist = HIST;  //    HIST (default) is 4
-                   //    as FPP decreases the rate of PLC triggers potentially goes up
-                   //    and load increases so don't use an inverse relation
+    //    as FPP decreases the rate of PLC triggers potentially goes up
+    //    and load increases so don't use an inverse relation
 
     //    crossfaded prediction is a full packet ahead of predicted
     //    packet, so the size of mPrediction needs to account for 2 full packets (2*FPP)
@@ -265,13 +265,13 @@ void Regulator::setFPPratio()
 //*******************************************************************************
 void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
 {
-//    std::cout << " shimFPP seq = " << seq_num;
+    //    std::cout << " shimFPP seq = " << seq_num;
     if (seq_num != -1) {
         if (!mFPPratioIsSet) {  // first peer packet
-//            mPeerFPP = len / (mNumChannels * mBitResolutionMode);
+            //            mPeerFPP = len / (mNumChannels * mBitResolutionMode);
             mPeerFPP = 256;
             std::cout << "!!!!!!!!!!!! shimFPP mPeerFPP hardwired with "
-                     << mPeerFPP << " for testing\n";
+                      << mPeerFPP << " for testing\n";
             // bufstrategy 1 autoq mode overloads qLen with negative val
             // creates this ugly code
             if (mMsecTolerance < 0) {  // handle -q auto or, for example, -q auto10
@@ -296,9 +296,9 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
             // number of stats tick calls per sec depends on FPP
             int maxFPP = (mPeerFPP > mFPP) ? mPeerFPP : mFPP;
             pushStat =
-                new StdDev(1, &mIncomingTimer, (int)(floor(48000.0 / (double)maxFPP)));
+                    new StdDev(1, &mIncomingTimer, (int)(floor(48000.0 / (double)maxFPP)));
             pullStat =
-                new StdDev(2, &mIncomingTimer, (int)(floor(48000.0 / (double)mFPP)));
+                    new StdDev(2, &mIncomingTimer, (int)(floor(48000.0 / (double)mFPP)));
             mFPPratioIsSet = true;
         }
         if (mFPPratioNumerator == mFPPratioDenominator) {
@@ -327,7 +327,7 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
                 }
             }
         }
-//        pushStat->tick();
+        //        pushStat->tick();
         double adjustAuto = pushStat->calcAuto(mAutoHeadroom, mFPPdurMsec);
         //        qDebug() << adjustAuto;
         if (mAuto && (pushStat->lastTime > AutoInitDur))
@@ -339,10 +339,12 @@ void Regulator::shimFPP(const int8_t* buf, int len, int seq_num)
 void Regulator::pushPacket(const int8_t* buf, int seq_num)
 {
     QMutexLocker locker(&mMutex);
+//        sineTestPacket((int8_t *)buf);
+//    dummyPacket((int8_t *)buf);
     seq_num %= mModSeqNum;
     // if (seq_num==0) return;   // impose regular loss
     mIncomingTiming[seq_num] =
-        mMsecTolerance + (double)mIncomingTimer.nsecsElapsed() / 1000000.0;
+            mMsecTolerance + (double)mIncomingTimer.nsecsElapsed() / 1000000.0;
     mLastSeqNumIn = seq_num;
     if (mLastSeqNumIn != -1)
         memcpy(mSlots[mLastSeqNumIn % mNumSlots], buf, mBytes);
@@ -351,31 +353,47 @@ void Regulator::pushPacket(const int8_t* buf, int seq_num)
 //*******************************************************************************
 void Regulator::dummyPacket(int8_t* buf)
 {
-//    QMutexLocker locker(&mMutex);
+    //    QMutexLocker locker(&mMutex);
     // diagnostic output
-    /////////////////////
+
+    if (false) {
+        // Convert packet's non-interleaved layout to interleaved one used internally
+        int8_t* src = buf;
+        int8_t* dst = mXfrBuffer;
+        int C       = mNumChannels;
+        int N             = mFPP*2;
+        int mSmplSize = 2;
+        for (int n = 0; n < N; ++n) {
+            for (int c = 0; c < C; ++c) {
+                memcpy(dst + (n * mNumChannels + c) * mSmplSize,
+                       src + (n + c * N) * mSmplSize, mSmplSize);
+            }
+        }
+//        src = dst;
+    }
+        /////////////////////
 //    for (unsigned int i = 0; i < mFPP; i++) {
 //        for (unsigned int j = 0; j < mNumChannels; j++) {
-//            unsigned int index = i * mNumChannels + j;
-//            sampleToBits(0.7 * sin(mPhasor[j]), j, i);
-//            mPhasor[j] += (!j) ? 0.2 : 0.201;
+//            if (j)
+//                std::cout << bitsToSample(j, i) << "\t\t\t";
+//else
+//                std::cout << bitsToSample(j, i) << "\n";
 //        }
 //    }
     /////////////////////
     memcpy(buf, mXfrBuffer, mBytes);
-//    std::cout << "dummyPacket \n";
 };
 
 //*******************************************************************************
 void Regulator::sineTestPacket(int8_t* buf)
 {
-    QMutexLocker locker(&mMutex);
+    //    QMutexLocker locker(&mMutex);
     // diagnostic output
     /////////////////////
     for (unsigned int i = 0; i < mFPP; i++) {
         for (unsigned int j = 0; j < mNumChannels; j++) {
             sampleToBits(0.7 * sin(mPhasor[j]), j, i);
-            mPhasor[j] += (!j) ? 0.2 : 0.201;
+            mPhasor[j] += (!j) ? 0.2 : 0.22;
         }
     }
     /////////////////////
@@ -386,7 +404,7 @@ void Regulator::sineTestPacket(int8_t* buf)
 void Regulator::pullPacket(int8_t* buf)
 {
     QMutexLocker locker(&mMutex);
-//    std::cout << "pullPacket \n";
+    //    std::cout << "pullPacket \n";
     mSkip = 0;
     if ((mLastSeqNumIn == -1) || (!mFPPratioIsSet)) {
         goto ZERO_OUTPUT;
@@ -413,21 +431,21 @@ void Regulator::pullPacket(int8_t* buf)
     }
 
 PACKETOK : {
-    if (mSkip) {
-        processPacket(true);
-        pullStat->plcOverruns += mSkip;
-    } else
-        processPacket(false);
-    pullStat->tick();
-    goto OUTPUT;
-}
+        if (mSkip) {
+            processPacket(true);
+            pullStat->plcOverruns += mSkip;
+        } else
+            processPacket(false);
+        pullStat->tick();
+        goto OUTPUT;
+    }
 
 UNDERRUN : {
-    processPacket(true);
-    pullStat->plcUnderruns++;  // count late
-    pullStat->tick();
-    goto OUTPUT;
-}
+        processPacket(true);
+        pullStat->plcUnderruns++;  // count late
+        pullStat->tick();
+        goto OUTPUT;
+    }
 
 ZERO_OUTPUT:
     memcpy(mXfrBuffer, mZeros, mBytes);
@@ -491,11 +509,11 @@ void Regulator::processChannel(int ch, bool glitch, int packetCnt, bool lastWasG
         if (lastWasGlitch)
             for (int s = 0; s < mFPP; s++)
                 cd->mXfadedPred[s] =
-                    cd->mTruth[s] * mFadeUp[s] + cd->mLastPred[s] * mFadeDown[s];
+                        cd->mTruth[s] * mFadeUp[s] + cd->mLastPred[s] * mFadeDown[s];
         for (int s = 0; s < mFPP; s++)
             sampleToBits((glitch)
-                             ? cd->mPrediction[s]
-                             : ((lastWasGlitch) ? cd->mXfadedPred[s] : cd->mTruth[s]),
+                         ? cd->mPrediction[s]
+                           : ((lastWasGlitch) ? cd->mXfadedPred[s] : cd->mTruth[s]),
                          ch, s);
         if (glitch) {
             for (int s = 0; s < mFPP; s++)
@@ -514,10 +532,10 @@ void Regulator::processChannel(int ch, bool glitch, int packetCnt, bool lastWasG
 
     for (int s = 0; s < mFPP; s++)
         cd->mLastPackets[0][s] =
-            //                ((!glitch) || (packetCnt < mHist)) ? cd->mTruth[s] :
-            //                cd->mPrediction[s];
-            ((glitch) ? ((packetCnt >= mHist) ? cd->mPrediction[s] : cd->mTruth[s])
-                      : ((lastWasGlitch) ? cd->mXfadedPred[s] : cd->mTruth[s]));
+                //                ((!glitch) || (packetCnt < mHist)) ? cd->mTruth[s] :
+                //                cd->mPrediction[s];
+                ((glitch) ? ((packetCnt >= mHist) ? cd->mPrediction[s] : cd->mTruth[s])
+                          : ((lastWasGlitch) ? cd->mXfadedPred[s] : cd->mTruth[s]));
 
     // diagnostic output
     /////////////////////
@@ -534,8 +552,8 @@ void Regulator::processChannel(int ch, bool glitch, int packetCnt, bool lastWasG
 // This function quantize from 32 bit to a lower bit resolution
 // 24 bit is not working yet
 void AudioInterface::fromSampleToBitConversion(
-    const sample_t* const input, int8_t* output,
-    const AudioInterface::audioBitResolutionT targetBitResolution)
+        const sample_t* const input, int8_t* output,
+        const AudioInterface::audioBitResolutionT targetBitResolution)
 {
     int8_t tmp_8;
     uint8_t tmp_u8;  // unsigned to quantize the remainder in 24bits
@@ -547,7 +565,7 @@ void AudioInterface::fromSampleToBitConversion(
     case BIT8:
         // 8bit integer between -128 to 127
         tmp_sample =
-            std::max(-127.0, std::min(127.0, std::round((*input) * 127.0)));  // 2^7 = 128
+                std::max(-127.0, std::min(127.0, std::round((*input) * 127.0)));  // 2^7 = 128
         tmp_8 = static_cast<int8_t>(tmp_sample);
         std::memcpy(output, &tmp_8, 1);  // 8bits = 1 bytes
         break;
@@ -555,11 +573,11 @@ void AudioInterface::fromSampleToBitConversion(
         // 16bit integer between -32768 to 32767
         // original scaling: tmp_sample = floor( (*input) * 32768.0 ); // 2^15 = 32768.0
         tmp_sample = std::max(
-            -32767.0, std::min(32767.0, std::round((*input) * 32767.0)));  // 2^15 = 32768
+                    -32767.0, std::min(32767.0, std::round((*input) * 32767.0)));  // 2^15 = 32768
         tmp_16 = static_cast<int16_t>(tmp_sample);
         std::memcpy(
-            output, &tmp_16,
-            2);  // 2 bytes output in Little Endian order (LSB -> smallest address)
+                    output, &tmp_16,
+                    2);  // 2 bytes output in Little Endian order (LSB -> smallest address)
         break;
     case BIT24:
         // To convert to 24 bits, we first quantize the number to 16bit
@@ -570,8 +588,8 @@ void AudioInterface::fromSampleToBitConversion(
         // Then we compute the remainder error, and quantize that part into an 8bit number
         // Note that this remainder is always positive, so we use an unsigned integer
         tmp_sample8 = floor(
-            (tmp_sample - tmp_sample16)  // this is a positive number, between 0.0-1.0
-            * 256.0);
+                    (tmp_sample - tmp_sample16)  // this is a positive number, between 0.0-1.0
+                    * 256.0);
         tmp_u8 = static_cast<uint8_t>(tmp_sample8);
 
         // Finally, we copy the 16bit number in the first 2 bytes,
@@ -590,8 +608,8 @@ void AudioInterface::fromSampleToBitConversion(
 
 //*******************************************************************************
 void AudioInterface::fromBitToSampleConversion(
-    const int8_t* const input, sample_t* output,
-    const AudioInterface::audioBitResolutionT sourceBitResolution)
+        const int8_t* const input, sample_t* output,
+        const AudioInterface::audioBitResolutionT sourceBitResolution)
 {
     int8_t tmp_8;
     uint8_t tmp_u8;
@@ -631,19 +649,19 @@ sample_t Regulator::bitsToSample(int ch, int frame)
 {
     sample_t sample = 0.0;
     AudioInterface::fromBitToSampleConversion(
-        &mXfrBuffer[(frame * mBitResolutionMode * mNumChannels)
-                    + (ch * mBitResolutionMode)],
-        &sample, mBitResolutionMode);
+                &mXfrBuffer[(frame * mBitResolutionMode * mNumChannels)
+            + (ch * mBitResolutionMode)],
+            &sample, mBitResolutionMode);
     return sample;
 }
 
 void Regulator::sampleToBits(sample_t sample, int ch, int frame)
 {
     AudioInterface::fromSampleToBitConversion(
-        &sample,
-        &mXfrBuffer[(frame * mBitResolutionMode * mNumChannels)
-                    + (ch * mBitResolutionMode)],
-        mBitResolutionMode);
+                &sample,
+                &mXfrBuffer[(frame * mBitResolutionMode * mNumChannels)
+            + (ch * mBitResolutionMode)],
+            mBitResolutionMode);
 }
 
 //*******************************************************************************
@@ -855,14 +873,14 @@ void StdDev::tick()
             longTermMax = longTermMaxAcc / (double)longTermCnt;
             if (true)
                 std::cout << std::setw(10) << mean << std::setw(10) << lastMin << std::setw(10) << max
-                     << std::setw(10) << stdDevTmp << std::setw(10) << longTermStdDev << " " << mId
-                     << std::endl;
+                          << std::setw(10) << stdDevTmp << std::setw(10) << longTermStdDev << " " << mId
+                          << std::endl;
         } else if (false) //  !!!!!!!!!!!!!!!!!!!1
             std::cout << "printing directly from Regulator->stdDev->tick:\n (mean / min / "
-                    "max / "
-                    "stdDev / longTermStdDev) \n";
+                         "max / "
+                         "stdDev / longTermStdDev) \n";
 
-//        longTermCnt++; !!!!!!!!!!!!!!!!!!!1
+        //        longTermCnt++; //!!!!!!!!!!!!!!!!!!!1
         lastMean         = mean;
         lastMin          = min;
         lastMax          = max;
