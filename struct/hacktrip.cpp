@@ -19,14 +19,14 @@ void HackTrip::start()
 
 void HackTrip::stop()
 {
-    mAudio->stop();
     mUdp->stop();
+    mAudio->stop();
 }
 
 HackTrip:: ~HackTrip() {
     delete mAudio;
-    delete mReg;
     delete mUdp;
+//    delete mReg;
 }
 
 Audio::Audio(Regulator * reg, UDP *udp)

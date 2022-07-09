@@ -11,9 +11,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    delete ht;
     delete ui;
 }
-
 
 void MainWindow::on_connectButton_clicked()
 {
@@ -28,5 +28,5 @@ void MainWindow::on_sendAutioButton_clicked()
 void MainWindow::on_quitButton_clicked()
 {
     ht->stop();
-    qApp->quit();
+    this->close();
 }
