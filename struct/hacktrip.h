@@ -43,12 +43,9 @@ public:
 
 class UDP : public QObject
 {
-//    Q_OBJECT
-
 public:
     UDP(Regulator * reg = 0);
     ~UDP();
-    void test();
     void stop();
     void send(int seq, int8_t *audioBuf);
     std::vector<int8_t*> mInBuffer;
@@ -57,7 +54,7 @@ public:
     int mRing;
     QMutex mMutex;                     ///< Mutex to protect read and write operations
 private:
-    QUdpSocket *mSockSend;
+    QUdpSocket *mSock;
     QHostAddress serverHostAddress;
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
@@ -66,14 +63,10 @@ private:
     QByteArray mBuf;
     bool mStop;
     bool mTest;
-    bool mRcv;
-//    MY_TYPE *inBuffer;
-    QByteArray *mZeros;
     std::vector<double> mPhasor;
 public slots:
     void readPendingDatagrams();
 };
-
 
 class Audio
 {
@@ -90,7 +83,6 @@ public:
                                       RtAudioStreamStatus status, void *arg);
     unsigned int bufferFrames;
     unsigned int bufferBytes;
-    //    RtAudioStreamStatus status, void *arg);
 private:
     // these are identical to the rtaudio/tests/Duplex.cpp example
     // except with m_ prepended
@@ -107,16 +99,13 @@ private:
     RtAudio::StreamParameters m_oParams;
     RtAudio::StreamOptions options;
     RtAudio *mRTaudio;
-    void duplex(int device);
     bool mStop;
     int networkAudio_callback(void *outputBuffer, void *inputBuffer,
-                              unsigned int nBufferFrames, double streamTime,
-                              RtAudioStreamStatus status,
+                              unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus,
                               void *bytesInfoFromStreamOpen);
     Regulator * mRegFromHackTrip;
-    UDP * mUdpSend;
+    UDP * mUdp;
     std::vector<double> mPhasor;
-    QByteArray *mZeros;
     int seq;
 };
 
@@ -147,7 +136,5 @@ private:
     UDP *mUdp;
     Audio *mAudio;
 };
-
-
 
 #endif // HACKTRIP_H
