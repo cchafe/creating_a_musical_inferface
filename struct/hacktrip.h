@@ -55,6 +55,7 @@ public:
     int mWptr;
     int mRptr;
     int mRing;
+    QMutex mMutex;                     ///< Mutex to protect read and write operations
 private:
     QUdpSocket *mSockSend;
     QHostAddress serverHostAddress;

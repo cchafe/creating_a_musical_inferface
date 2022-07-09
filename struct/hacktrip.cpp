@@ -102,13 +102,18 @@ int Audio::networkAudio_callback( void *outputBuffer, void *inputBuffer,
 
     }
     if (true) { // DSP block
+        QMutexLocker locker(&mUdpSend->mMutex);
 
         // this should be a pull
         //        mRegFromHackTrip->pullPacket((int8_t *)outputBuffer);
-        mUdpSend->mRptr = mUdpSend->mWptr-10;
+//        mUdpSend->mRptr = mUdpSend->mWptr-10;
+        if(mUdpSend->mRptr == mUdpSend->mWptr) mUdpSend->mRptr = mUdpSend->mWptr-10;
         if (mUdpSend->mRptr < 0) mUdpSend->mRptr = 0;
+        mUdpSend->mRptr %= mUdpSend->mRing;
         memcpy(outputBuffer, mUdpSend->mInBuffer[mUdpSend->mRptr],
                 HackTrip::mAudioDataLen);
+        mUdpSend->mRptr++;
+
         //        mRegFromHackTrip->dummyPacket((int8_t *)outputBuffer);
 
         // write sines to mXfr, memcpy mXfr to outputBuffer
@@ -401,6 +406,8 @@ UDP::UDP(Regulator * reg)
     mRptr = 0;
     for (int i = 0; i < mRing; i++) {
         int8_t* tmp = new int8_t[HackTrip::mAudioDataLen];
+        for (int j = 0; j < HackTrip::mAudioDataLen; j++)
+            tmp[j] = 0;
         mInBuffer.push_back(tmp);
     }
 };
@@ -417,6 +424,7 @@ UDP:: ~UDP() {
 void UDP::readPendingDatagrams() {
     //read datagrams in a loop to make sure that all received datagrams are processed
     //since readyRead() is emitted for a datagram only when all previous datagrams are read
+    QMutexLocker locker(&mMutex);
     while(mSockSend->hasPendingDatagrams()){
         QByteArray datagram;
         datagram.resize(mSockSend->pendingDatagramSize());
