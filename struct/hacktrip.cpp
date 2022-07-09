@@ -19,8 +19,8 @@ void HackTrip::start()
 
 void HackTrip::stop()
 {
-    mUdp->stop();
     mAudio->stop();
+    mUdp->stop();
 }
 
 HackTrip:: ~HackTrip() {
