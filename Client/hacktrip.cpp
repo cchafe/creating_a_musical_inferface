@@ -8,21 +8,15 @@ HackTrip::HackTrip()
 {
     mUdp = new UDP();
     //    mAudio = new Audio(mUdp);
-    mTcp = new TCP(mUdp);
 }
 
 void HackTrip::connect()
 {
-    mTcp->connectToServer();
+    mUdp->setPeerUdpPort( mTcp.connectToServer() );
 }
 
-TCP::TCP(UDP *udp)
-    : mUdp(udp)
-{};
-
-void TCP::connectToServer()
+int TCP::connectToServer()
 {
-    mSocket = new QTcpSocket();
     QHostAddress serverHostAddress;
     if (!serverHostAddress.setAddress(gServer)) {
         QHostInfo info = QHostInfo::fromName(gServer);
@@ -31,31 +25,29 @@ void TCP::connectToServer()
             serverHostAddress = info.addresses().constFirst();
         }
     }
-    mSocket->connectToHost(serverHostAddress,4464);
-    mSocket->waitForConnected(HackTrip::mSocketWaitMs);
-    sendToServer();
+    connectToHost(serverHostAddress,4464);
+    waitForConnected(HackTrip::mSocketWaitMs);
+    int peerUdpPort =0;
+    char* port_buf = new char[sizeof(u_int32_t)];
+    if (state()==QTcpSocket::ConnectedState) {
+        QByteArray ba;
+        qint32 tmp = 4464;
+        ba.setNum(tmp);
+        write(ba);
+        waitForBytesWritten(1500);
+        waitForReadyRead();
+        read(port_buf, sizeof(u_int32_t));
+        peerUdpPort = qFromLittleEndian<qint32>(port_buf);
+        std::cout << "TCP: ephemeral port = " << peerUdpPort << std::endl;
+    } else
+        std::cout << "TCP: not connected to server" << std::endl;
+    delete[] port_buf;
+    return peerUdpPort;
 }
 
 void TCP::sendToServer()
 {
-    char* port_buf = new char[sizeof(u_int32_t)];
-    if (mSocket->state()==QTcpSocket::ConnectedState) {
-        QByteArray ba;
-        qint32 tmp = 4464;
-        ba.setNum(tmp);
-        mSocket->write(ba);
-        mSocket->waitForBytesWritten(1500);
-        mSocket->waitForReadyRead();
-        mSocket->read(port_buf, sizeof(u_int32_t));
-        mUdp->mPeerPort = qFromLittleEndian<qint32>(port_buf);
-        std::cout << "TCP: ephemeral port = " << mUdp->mPeerPort << std::endl;
-    } else
-        std::cout << "TCP: not connected to server" << std::endl;
-    delete[] port_buf;
-}
 
-TCP:: ~TCP() {
-    delete mSocket;
 }
 
 void HackTrip::run()
@@ -83,7 +75,6 @@ void HackTrip::stop()
 
 HackTrip:: ~HackTrip() {
     //    delete mAudio;
-    //    delete mUdp;
 }
 
 UDP::UDP() {
@@ -166,7 +157,7 @@ void UDP::send(int seq, int8_t *audioBuf) {
     //    mRegFromHackTrip->ILtoNonIL((int8_t *)audioBuf);
 
     memcpy(mBuf.data()+sizeof(HeaderStruct),audioBuf,HackTrip::mAudioDataLen);
-    writeDatagram(mBuf, serverHostAddress, mPeerPort);
+    writeDatagram(mBuf, serverHostAddress, mPeerUdpPort);
     if (seq%500 == 0)
         std::cout << "UDP send: packet = " << seq << std::endl;
 }
@@ -180,13 +171,12 @@ void UDP::stop()
     QByteArray stopBuf;
     stopBuf.resize(controlPacketSize);
     stopBuf.fill(0xff,controlPacketSize);
-    writeDatagram(stopBuf, serverHostAddress, mPeerPort);
-    writeDatagram(stopBuf, serverHostAddress, mPeerPort);
-    std::cout << "-2\n";
+    writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
+    writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
     close(); // stop rcv
-    for (int i = 0; i < mRing; i++) {
-        delete[] mInBuffer[i];
-    }
+    //    for (int i = 0; i < mRing; i++) {
+    //        delete[] mInBuffer[i];
+    //    }
 }
 
 Audio::Audio(UDP *udp)

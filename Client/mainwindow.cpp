@@ -34,6 +34,6 @@ void MainWindow::on_stopButton_clicked()
         delete ht;
         ht = nullptr;
     }
-//    this->close();
+    this->close();
 }
 

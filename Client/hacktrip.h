@@ -31,12 +31,12 @@ public:
     uint8_t NumOutgoingChannelsToNet;    ///< Number of outgoing Channels to the network
 };
 
-class UDP : public QUdpSocket
-{
+class UDP : public QUdpSocket {
 public:
     UDP();
     ~UDP();
     void start();
+    void setPeerUdpPort(int port) { mPeerUdpPort = port; }
     void stop();
     void send(int seq, int8_t *audioBuf);
     std::vector<int8_t*> mInBuffer;
@@ -45,25 +45,20 @@ public:
     int mRptr;
     int mRing;
     QMutex mMutex;                     ///< Mutex to protect read and write operations
-    int mPeerPort;
 private:
     QHostAddress serverHostAddress;
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
+    int mPeerUdpPort;
     QByteArray mBuf;
 public slots:
     void readPendingDatagrams();
 };
 
-class TCP {
+class TCP : public QTcpSocket {
 public:
-    TCP(UDP * udp);
-    ~TCP();
-    void connectToServer();
+    int connectToServer();
     void sendToServer();
-private:
-    QTcpSocket * mSocket;
-    UDP * mUdp;
 };
 
 class Audio
@@ -123,9 +118,9 @@ private:
     friend class TCP;
     friend class UDP;
     friend class Audio;
-    TCP *mTcp;
+    TCP mTcp;
     UDP *mUdp;
-    Audio *mAudio;
+//    Audio *mAudio;
 };
 
 #endif // HACKTRIP_H
