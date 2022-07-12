@@ -6,18 +6,20 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ht = new HackTrip();
+    ht = nullptr;
 }
 
 MainWindow::~MainWindow()
 {
-    delete ht;
+    if (ht != nullptr) delete ht;
     delete ui;
 }
 
 void MainWindow::on_connectButton_clicked()
 {
-    ht->mTcpClient.connectToServer();
+    if (ht != nullptr) delete ht;
+    ht = new HackTrip();
+    ht->connect(); // grab the next free client slot from server pool
 }
 
 void MainWindow::on_runButton_clicked()
@@ -27,7 +29,11 @@ void MainWindow::on_runButton_clicked()
 
 void MainWindow::on_stopButton_clicked()
 {
-    ht->stop();
-    this->close();
+    if (ht != nullptr) {
+        ht->stop();
+        delete ht;
+        ht = nullptr;
+    }
+//    this->close();
 }
 

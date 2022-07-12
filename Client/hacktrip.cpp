@@ -7,8 +7,18 @@
 HackTrip::HackTrip()
 {
     mUdp = new UDP();
-    mAudio = new Audio(mUdp);
+    //    mAudio = new Audio(mUdp);
+    mTcp = new TCP(mUdp);
 }
+
+void HackTrip::connect()
+{
+    mTcp->connectToServer();
+}
+
+TCP::TCP(UDP *udp)
+    : mUdp(udp)
+{};
 
 void TCP::connectToServer()
 {
@@ -28,26 +38,19 @@ void TCP::connectToServer()
 
 void TCP::sendToServer()
 {
-    uint32_t udp_port;
-    int size       = sizeof(udp_port);
-    char* port_buf = new char[size];
+    char* port_buf = new char[sizeof(u_int32_t)];
     if (mSocket->state()==QTcpSocket::ConnectedState) {
         QByteArray ba;
         qint32 tmp = 4464;
         ba.setNum(tmp);
         mSocket->write(ba);
         mSocket->waitForBytesWritten(1500);
-        std::cout << "TCP: waitForBytesWritten" << std::endl;
         mSocket->waitForReadyRead();
-        quint16 bytes =  mSocket->bytesAvailable();
-        std::cout << "TCP: from server " << bytes << std::endl;
-
-        mSocket->read(port_buf, size);
-        udp_port = qFromLittleEndian<qint32>(port_buf);
-
-        std::cout << "TCP: ephemeral port = " << udp_port << std::endl;
+        mSocket->read(port_buf, sizeof(u_int32_t));
+        mUdp->mPeerPort = qFromLittleEndian<qint32>(port_buf);
+        std::cout << "TCP: ephemeral port = " << mUdp->mPeerPort << std::endl;
     } else
-        std::cout << "TCP: tried to send data but not connected to server" << std::endl;
+        std::cout << "TCP: not connected to server" << std::endl;
     delete[] port_buf;
 }
 
@@ -57,26 +60,33 @@ TCP:: ~TCP() {
 
 void HackTrip::run()
 {
-    mAudio->start();
+    mUdp->start();
+    QByteArray startBuf;
+    startBuf.resize(mAudioDataLen);
+    startBuf.fill(0xff,mAudioDataLen);
+    for (int i = 0; i<25; i++) { // needs more than 5
+        QThread::msleep(5); // needs spacing
+        mUdp->send(i,(int8_t *)&startBuf);
+    }
+    //    mAudio->start();
 }
 
 void HackTrip::stop()
 {
-    mUdp->quit = true;
-    QThread::msleep(100);
+    //    mUdp->quit = true;
+    //    QThread::msleep(100);
     mUdp->stop();
-    QThread::msleep(100);
-    mAudio->stop();
-    QThread::msleep(100);
+    //    QThread::msleep(100);
+    //    mAudio->stop();
+    //    QThread::msleep(100);
 }
 
 HackTrip:: ~HackTrip() {
-    delete mAudio;
-    delete mUdp;
+    //    delete mAudio;
+    //    delete mUdp;
 }
 
-UDP::UDP()
-{
+UDP::UDP() {
     mHeader.TimeStamp = (uint64_t)0;
     mHeader.SeqNumber = (uint16_t)0;
     mHeader.BufferSize = (uint16_t)HackTrip::mFPP;
@@ -95,36 +105,32 @@ UDP::UDP()
             serverHostAddress = info.addresses().constFirst();
         }
     }
-    mPeerPort = 61002;
+}
+
+void UDP::start() {
+    quit = false;
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     int optval = 1;
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
                (void *) &optval, sizeof(optval));
-    mSocket = new QUdpSocket(this);
-    mSocket->setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
+    setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
     int ret = 0;
-    ret = mSocket->bind(HackTrip::mAudioPort);
+    ret = bind(HackTrip::mAudioPort);
     std::cout << "UDP: start send = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
-    connect(mSocket, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
-    mRing = 500;
-    mWptr = 0;
-    mRptr = 0;
-    for (int i = 0; i < mRing; i++) {
-        int8_t* tmp = new int8_t[HackTrip::mAudioDataLen];
-        for (int j = 0; j < HackTrip::mAudioDataLen; j++)
-            tmp[j] = 0;
-        mInBuffer.push_back(tmp);
-    }
-    quit = false;
+    //    connect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
+    //    mRing = 500;
+    //    mWptr = 0;
+    //    mRptr = 0;
+    //    for (int i = 0; i < mRing; i++) {
+    //        int8_t* tmp = new int8_t[HackTrip::mAudioDataLen];
+    //        for (int j = 0; j < HackTrip::mAudioDataLen; j++)
+    //            tmp[j] = 0;
+    //        mInBuffer.push_back(tmp);
+    //    }
 };
 
 UDP:: ~UDP() {
     std::cout << "2\n";
-    delete mSocket;
-    for (int i = 0; i < mRing; i++) {
-        delete[] mInBuffer[i];
-    }
-    std::cout << "3\n";
 }
 
 //https://stackoverflow.com/questions/40200535/c-qt-qudp-socket-not-sending-receiving-data
@@ -134,13 +140,13 @@ void UDP::readPendingDatagrams() {
     //since readyRead() is emitted for a datagram only when all previous datagrams are read
     if (quit) return;
     QMutexLocker locker(&mMutex);
-    while(mSocket->hasPendingDatagrams()){
+    while(hasPendingDatagrams()){
         QByteArray datagram;
-        datagram.resize(mSocket->pendingDatagramSize());
+        datagram.resize(pendingDatagramSize());
         QHostAddress sender;
         quint16 senderPort;
-        mSocket->readDatagram(datagram.data(), datagram.size(),
-                              &sender, &senderPort);
+        readDatagram(datagram.data(), datagram.size(),
+                     &sender, &senderPort);
         memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
         int seq = mHeader.SeqNumber;
         if (seq%500 == 0)
@@ -160,24 +166,27 @@ void UDP::send(int seq, int8_t *audioBuf) {
     //    mRegFromHackTrip->ILtoNonIL((int8_t *)audioBuf);
 
     memcpy(mBuf.data()+sizeof(HeaderStruct),audioBuf,HackTrip::mAudioDataLen);
-    mSocket->writeDatagram(mBuf, serverHostAddress, mPeerPort);
+    writeDatagram(mBuf, serverHostAddress, mPeerPort);
     if (seq%500 == 0)
         std::cout << "UDP send: packet = " << seq << std::endl;
 }
 
 void UDP::stop()
 {
-    disconnect(mSocket, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
+    disconnect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
     // Send exit packet (with 1 redundant packet).
     int controlPacketSize = 63;
     std::cout << "sending exit packet" << std::endl;
     QByteArray stopBuf;
     stopBuf.resize(controlPacketSize);
     stopBuf.fill(0xff,controlPacketSize);
-    mSocket->writeDatagram(stopBuf, serverHostAddress, mPeerPort);
-    mSocket->writeDatagram(stopBuf, serverHostAddress, mPeerPort);
+    writeDatagram(stopBuf, serverHostAddress, mPeerPort);
+    writeDatagram(stopBuf, serverHostAddress, mPeerPort);
     std::cout << "-2\n";
-    mSocket->close(); // stop rcv
+    close(); // stop rcv
+    for (int i = 0; i < mRing; i++) {
+        delete[] mInBuffer[i];
+    }
 }
 
 Audio::Audio(UDP *udp)

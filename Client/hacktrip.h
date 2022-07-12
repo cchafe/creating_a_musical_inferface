@@ -2,6 +2,7 @@
 #define HACKTRIP_H
 
 #include <rtaudio/RtAudio.h>
+#include <QTcpSocket>
 #include <QThread>
 #include <QHostInfo>
 #include <QUdpSocket>
@@ -17,17 +18,6 @@ typedef signed short MY_TYPE; // audio interface data is 16bit ints
 #define FORMAT RTAUDIO_SINT16 // which has this rtaudio name
 #define SCALE 32767.0 // audio samples for processing are doubles, so this is the conversion
 
-#include <QTcpSocket>
-class TCP
-{
-public:
-    TCP(){};
-    ~TCP();
-    void connectToServer();
-    void sendToServer();
-private:
-    QTcpSocket * mSocket;
-};
 
 struct HeaderStruct {
 public:
@@ -41,11 +31,12 @@ public:
     uint8_t NumOutgoingChannelsToNet;    ///< Number of outgoing Channels to the network
 };
 
-class UDP : public QObject
+class UDP : public QUdpSocket
 {
 public:
     UDP();
     ~UDP();
+    void start();
     void stop();
     void send(int seq, int8_t *audioBuf);
     std::vector<int8_t*> mInBuffer;
@@ -54,15 +45,25 @@ public:
     int mRptr;
     int mRing;
     QMutex mMutex;                     ///< Mutex to protect read and write operations
+    int mPeerPort;
 private:
-    QUdpSocket *mSocket;
     QHostAddress serverHostAddress;
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
-    int mPeerPort;
     QByteArray mBuf;
 public slots:
     void readPendingDatagrams();
+};
+
+class TCP {
+public:
+    TCP(UDP * udp);
+    ~TCP();
+    void connectToServer();
+    void sendToServer();
+private:
+    QTcpSocket * mSocket;
+    UDP * mUdp;
 };
 
 class Audio
@@ -105,9 +106,9 @@ class HackTrip
 public:
     HackTrip();
     ~HackTrip();
+    void connect();
     void run();
     void stop();
-    TCP mTcpClient;
 private:
     const QString mPort = "4464";
     static const int mBytesPerSample = sizeof(MY_TYPE);
@@ -122,6 +123,7 @@ private:
     friend class TCP;
     friend class UDP;
     friend class Audio;
+    TCP *mTcp;
     UDP *mUdp;
     Audio *mAudio;
 };
