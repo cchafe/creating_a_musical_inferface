@@ -33,8 +33,6 @@ public:
 
 class UDP : public QUdpSocket {
 public:
-    UDP();
-    ~UDP();
     void start();
     void setPeerUdpPort(int port) { mPeerUdpPort = port; }
     void stop();
@@ -90,8 +88,8 @@ private:
     RtAudio::StreamOptions options;
     RtAudio *mRTaudio;
     int audio_callback(void *outputBuffer, void *inputBuffer,
-                              unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus,
-                              void *bytesInfoFromStreamOpen);
+                       unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus,
+                       void *bytesInfoFromStreamOpen);
     UDP * mUdp;
     int seq;
 };
@@ -120,7 +118,7 @@ private:
     friend class Audio;
     TCP mTcp;
     UDP *mUdp;
-//    Audio *mAudio;
+    //    Audio *mAudio;
 };
 
 #endif // HACKTRIP_H

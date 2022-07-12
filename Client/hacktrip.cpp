@@ -77,7 +77,7 @@ HackTrip:: ~HackTrip() {
     //    delete mAudio;
 }
 
-UDP::UDP() {
+void UDP::start() {
     mHeader.TimeStamp = (uint64_t)0;
     mHeader.SeqNumber = (uint16_t)0;
     mHeader.BufferSize = (uint16_t)HackTrip::mFPP;
@@ -96,9 +96,7 @@ UDP::UDP() {
             serverHostAddress = info.addresses().constFirst();
         }
     }
-}
 
-void UDP::start() {
     quit = false;
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     int optval = 1;
@@ -119,10 +117,6 @@ void UDP::start() {
     //        mInBuffer.push_back(tmp);
     //    }
 };
-
-UDP:: ~UDP() {
-    std::cout << "2\n";
-}
 
 //https://stackoverflow.com/questions/40200535/c-qt-qudp-socket-not-sending-receiving-data
 
