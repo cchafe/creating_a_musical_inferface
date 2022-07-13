@@ -37,12 +37,12 @@ public:
     void setPeerUdpPort(int port) { mPeerUdpPort = port; }
     void stop();
     void send(int seq, int8_t *audioBuf);
-    std::vector<int8_t*> mInBuffer;
     bool quit;
+    QMutex mMutex;                     ///< Mutex to protect read and write operations
     int mWptr;
     int mRptr;
     int mRing;
-    QMutex mMutex;                     ///< Mutex to protect read and write operations
+    std::vector<int8_t*> mInBuffer;
 private:
     QHostAddress serverHostAddress;
     HeaderStruct mHeader;
@@ -92,6 +92,9 @@ private:
                        void *bytesInfoFromStreamOpen);
     UDP * mUdp;
     int seq;
+    std::vector<double> mPhasor;
+    void sineTest(MY_TYPE *buffer);
+    void printSamples(MY_TYPE *buffer);
 };
 
 class HackTrip
@@ -113,12 +116,15 @@ private:
     static const int mBufferQueueLength = 3;
     static const int mNumberOfBuffersRtAudio = 2;
     static const int mAudioDataLen = mFPP * mChannels * mBytesPerSample;
+    constexpr static const double mScale = 32767.0;
+    constexpr static const double mInvScale = 1.0 / 32767.0;
+
     friend class TCP;
     friend class UDP;
     friend class Audio;
     TCP mTcp;
-    UDP *mUdp;
-    //    Audio *mAudio;
+    UDP mUdp;
+        Audio *mAudio;
 };
 
 #endif // HACKTRIP_H

@@ -3,16 +3,16 @@
 #include <QUdpSocket>
 #include <netinet/in.h>
 #include <sys/types.h>
+#include <math.h>
 
 HackTrip::HackTrip()
 {
-    mUdp = new UDP();
-    //    mAudio = new Audio(mUdp);
+    mAudio = new Audio(&mUdp);
 }
 
 void HackTrip::connect()
 {
-    mUdp->setPeerUdpPort( mTcp.connectToServer() );
+    mUdp.setPeerUdpPort( mTcp.connectToServer() );
 }
 
 int TCP::connectToServer()
@@ -52,25 +52,23 @@ void TCP::sendToServer()
 
 void HackTrip::run()
 {
-    mUdp->start();
+    mUdp.start();
     QByteArray startBuf;
     startBuf.resize(mAudioDataLen);
     startBuf.fill(0xff,mAudioDataLen);
     for (int i = 0; i<25; i++) { // needs more than 5
         QThread::msleep(5); // needs spacing
-        mUdp->send(i,(int8_t *)&startBuf);
+        mUdp.send(i,(int8_t *)&startBuf);
     }
-    //    mAudio->start();
+    mAudio->start();
 }
 
 void HackTrip::stop()
 {
-    //    mUdp->quit = true;
+    mUdp.quit = true;
+    mUdp.stop();
     //    QThread::msleep(100);
-    mUdp->stop();
-    //    QThread::msleep(100);
-    //    mAudio->stop();
-    //    QThread::msleep(100);
+    mAudio->stop();
 }
 
 HackTrip:: ~HackTrip() {
@@ -106,16 +104,16 @@ void UDP::start() {
     int ret = 0;
     ret = bind(HackTrip::mAudioPort);
     std::cout << "UDP: start send = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
-    //    connect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
-    //    mRing = 500;
-    //    mWptr = 0;
-    //    mRptr = 0;
-    //    for (int i = 0; i < mRing; i++) {
-    //        int8_t* tmp = new int8_t[HackTrip::mAudioDataLen];
-    //        for (int j = 0; j < HackTrip::mAudioDataLen; j++)
-    //            tmp[j] = 0;
-    //        mInBuffer.push_back(tmp);
-    //    }
+    connect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
+    mRing = 50;
+    mWptr = mRing / 2;
+    mRptr = 0;
+    for (int i = 0; i < mRing; i++) {
+        int8_t* tmp = new int8_t[HackTrip::mAudioDataLen];
+        for (int j = 0; j < HackTrip::mAudioDataLen; j++)
+            tmp[j] = 0;
+        mInBuffer.push_back(tmp);
+    }
 };
 
 //https://stackoverflow.com/questions/40200535/c-qt-qudp-socket-not-sending-receiving-data
@@ -124,7 +122,7 @@ void UDP::readPendingDatagrams() {
     //read datagrams in a loop to make sure that all received datagrams are processed
     //since readyRead() is emitted for a datagram only when all previous datagrams are read
     if (quit) return;
-    QMutexLocker locker(&mMutex);
+    //    QMutexLocker locker(&mMutex);
     while(hasPendingDatagrams()){
         QByteArray datagram;
         datagram.resize(pendingDatagramSize());
@@ -138,7 +136,7 @@ void UDP::readPendingDatagrams() {
             std::cout << "UDP rcv: seq = " << seq << std::endl;
         int8_t *audioBuf = (int8_t *)(mBuf.data() + sizeof(HeaderStruct));
         //        mRegFromHackTrip->nonILtoIL((int8_t *)audioBuf);
-        memcpy(mInBuffer[mWptr],audioBuf,mBuf.size());
+        memcpy(mInBuffer[mWptr],audioBuf,HackTrip::mAudioDataLen);
         mWptr++;
         mWptr %= mRing;
     }
@@ -195,23 +193,47 @@ int Audio::audio_callback( void *outputBuffer, void *inputBuffer,
         return 1;
     }
     if ( streamTime >= m_streamTimePrintTime ) {
-        std::cout << " networkAudio_callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
+        std::cout << " audio_callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
         m_streamTimePrintTime += m_streamTimePrintIncrement;
     }
     seq++;
     seq %= 65536;
     if (seq%500 == 0)
         std::cout << "packet to network = " << seq << std::endl;
+    printSamples((MY_TYPE *)inputBuffer);
     mUdp->send(seq,(int8_t *)inputBuffer);
 
-    QMutexLocker locker(&mUdp->mMutex);
-    if(mUdp->mRptr == mUdp->mWptr) mUdp->mRptr = mUdp->mWptr-10;
+    //    QMutexLocker locker(&mUdp->mMutex);
+    if(mUdp->mRptr == mUdp->mWptr) mUdp->mRptr = mUdp->mRing / 2;
     if (mUdp->mRptr < 0) mUdp->mRptr = 0;
     mUdp->mRptr %= mUdp->mRing;
     memcpy(outputBuffer, mUdp->mInBuffer[mUdp->mRptr],
             HackTrip::mAudioDataLen);
     mUdp->mRptr++;
+
+    //            memcpy(outputBuffer, inputBuffer, HackTrip::mAudioDataLen);
+    //    sineTest((MY_TYPE *)outputBuffer);
+
     return 0;
+}
+
+void Audio::sineTest(MY_TYPE *buffer) {
+    for ( int ch=0; ch < HackTrip::mChannels; ch++ ) {
+        for ( int i=0; i < HackTrip::mFPP; i++ ) {
+            double tmp = sin(mPhasor[ch]);
+            *buffer++ = (MY_TYPE) (tmp * HackTrip::mScale);
+            mPhasor[ch] += ((ch) ? 0.020 : 0.022);
+        }
+    }
+}
+
+void Audio::printSamples(MY_TYPE *buffer) {
+    for ( int ch=0; ch < HackTrip::mChannels; ch++ ) {
+        for ( int i=0; i < HackTrip::mFPP; i++ ) {
+            double tmp = ((MY_TYPE) *buffer++) * HackTrip::mInvScale;
+            std::cout << "\t" << tmp << std::endl;
+        }
+    }
 }
 
 int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
@@ -223,6 +245,7 @@ int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
 }
 
 void Audio::start() {
+    mPhasor.resize(HackTrip::mChannels, 0.0);
     m_streamTimePrintIncrement = 1.0; // seconds
     m_streamTimePrintTime = 1.0; // seconds
     m_adac = new RtAudio();
@@ -241,7 +264,7 @@ void Audio::start() {
     m_oParams.deviceId = m_oDevice;
     m_oParams.nChannels = m_channels;
     m_oParams.firstChannel = m_oOffset;
-    options.flags = RTAUDIO_SCHEDULE_REALTIME; // use realtime priority if it's available
+    options.flags = RTAUDIO_NONINTERLEAVED | RTAUDIO_SCHEDULE_REALTIME;
     options.numberOfBuffers = HackTrip::mNumberOfBuffersRtAudio; // Windows DirectSound, Linux OSS, and Linux Alsa APIs only.
     // value set by the user is replaced during execution of the RtAudio::openStream() function by the value actually used by the system
     std::cout << "using default audio interface device\n";
@@ -268,6 +291,7 @@ void Audio::start() {
     std::cout << "\nAudio stream start" << std::endl;
     if (m_adac->startStream())
         std::cout << "\nCouldn't start streams!\n";
+    std::cout << "\nAudio stream started" << std::endl;
 }
 
 void Audio::stop()
