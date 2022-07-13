@@ -135,8 +135,7 @@ void UDP::readPendingDatagrams() {
         if (seq%500 == 0)
             std::cout << "UDP rcv: seq = " << seq << std::endl;
         int8_t *audioBuf = (int8_t *)(mBuf.data() + sizeof(HeaderStruct));
-        //        mRegFromHackTrip->nonILtoIL((int8_t *)audioBuf);
-        memcpy(mInBuffer[mWptr],audioBuf,HackTrip::mAudioDataLen);
+//        memcpy(mInBuffer[mWptr],audioBuf,HackTrip::mAudioDataLen);
         mWptr++;
         mWptr %= mRing;
     }
