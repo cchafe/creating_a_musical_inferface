@@ -154,6 +154,36 @@ void UDP::send(int seq, int8_t *audioBuf) {
         std::cout << "UDP send: packet = " << seq << std::endl;
 }
 
+int UDP::audioCallback( void *outputBuffer, void *inputBuffer,
+                           unsigned int nBufferFrames,
+                           double streamTime, RtAudioStreamStatus /* status */,
+                           void * /* data */ ) // last arg is used for "this"
+{
+    if(quit) {
+        std::cout << " quit!!! \n";
+        return 1;
+    }
+    seq++;
+    seq %= 65536;
+    if (seq%500 == 0)
+        std::cout << "packet to network = " << seq << std::endl;
+//    printSamples((MY_TYPE *)inputBuffer);
+    send(seq,(int8_t *)inputBuffer);
+
+    //    QMutexLocker locker(&mUdp->mMutex);
+    if(mRptr == mWptr) mRptr = mRing / 2;
+    if (mRptr < 0) mRptr = 0;
+    mRptr %= mRing;
+    memcpy(outputBuffer, mInBuffer[mRptr],
+            HackTrip::mAudioDataLen);
+    mRptr++;
+
+    //            memcpy(outputBuffer, inputBuffer, HackTrip::mAudioDataLen);
+    //    sineTest((MY_TYPE *)outputBuffer);
+
+    return 0;
+}
+
 void UDP::stop()
 {
     disconnect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
@@ -240,9 +270,16 @@ int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                   unsigned int nBufferFrames, double streamTime,
                                   RtAudioStreamStatus status, void *arg)
 {
-    return static_cast<Audio*>(arg)->audio_callback(
+    return static_cast<UDP*>(arg)->audioCallback(
                 outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
+//int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
+//                                  unsigned int nBufferFrames, double streamTime,
+//                                  RtAudioStreamStatus status, void *arg)
+//{
+//    return static_cast<Audio*>(arg)->audio_callback(
+//                outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
+//}
 
 void Audio::start() {
     mPhasor.resize(HackTrip::mChannels, 0.0);
@@ -277,7 +314,7 @@ void Audio::start() {
     bufferBytes = HackTrip::mFPP*HackTrip::mChannels*sizeof(MY_TYPE);
     if (m_adac->openStream( &m_oParams, &m_iParams, FORMAT, HackTrip::mSampleRate,
                             &bufferFrames, &Audio::wrapperProcessCallback,
-                            (void*)this,  &options ))
+                            (void*)mUdp,  &options ))
         std::cout << "\nCouldn't open audio device streams!\n";
     if (m_adac->isStreamOpen() == false) {
         std::cout << "\nCouldn't open audio device streams!\n";

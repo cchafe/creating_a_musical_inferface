@@ -44,6 +44,9 @@ public:
     int mRptr;
     int mRing;
     std::vector<int8_t*> mInBuffer;
+    int audioCallback(void *outputBuffer, void *inputBuffer,
+                       unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus,
+                       void *bytesInfoFromStreamOpen);
 private:
     QHostAddress serverHostAddress;
     HeaderStruct mHeader;
@@ -51,6 +54,7 @@ private:
     int mPeerUdpPort;
     QByteArray mBufSend;
     QByteArray mBufRcv;
+    int seq;
 public slots:
     void readPendingDatagrams();
 };
