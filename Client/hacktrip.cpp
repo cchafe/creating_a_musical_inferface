@@ -9,6 +9,7 @@ void HackTrip::connect()
 {
     mUdp.setPeerUdpPort( mTcp.connectToServer() );
     mAudio.setUdp(&mUdp);
+    mUdp.setTest(HackTrip::mChannels);
 }
 
 int TCP::connectToServer()
@@ -83,11 +84,11 @@ void UDP::start() {
             serverHostAddress = info.addresses().constFirst();
         }
     }
-//    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-//    int optval = 1;
-//    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
-//               (void *) &optval, sizeof(optval));
-//    setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
+    //    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    //    int optval = 1;
+    //    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
+    //               (void *) &optval, sizeof(optval));
+    //    setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
     int ret = 0;
     ret = bind(HackTrip::mAudioPort);
     std::cout << "UDP: start send = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
@@ -115,13 +116,13 @@ void UDP::readPendingDatagrams() {
         quint16 senderPort;
         readDatagram(mBufRcv.data(), mBufRcv.size(),
                      &sender, &senderPort);
-//        std::cout << sender.toIPv4Address() << " " << senderPort << std::endl;
+        //        std::cout << sender.toIPv4Address() << " " << senderPort << std::endl;
         memcpy(&mHeader,mBufRcv.data(),sizeof(HeaderStruct));
         int seq = mHeader.SeqNumber;
         if (seq%500 == 0)
             std::cout << "UDP rcv: seq = " << seq << std::endl;
         int8_t *audioBuf = (int8_t *)(mBufRcv.data() + sizeof(HeaderStruct));
-//        Audio::printSamples((MY_TYPE *)audioBuf);
+        //        Audio::printSamples((MY_TYPE *)audioBuf);
         memcpy(mInBuffer[mWptr],audioBuf,HackTrip::mAudioDataLen);
         mWptr++;
         mWptr %= mRing;
@@ -138,27 +139,27 @@ void UDP::send(int seq, int8_t *audioBuf) {
 }
 
 int UDP::audioCallback( void *outputBuffer, void *inputBuffer,
-                           unsigned int /* nBufferFrames */,
-                           double /* streamTime */, RtAudioStreamStatus /* status */,
-                           void * /* data */ ) // last arg is used for "this"
+                        unsigned int /* nBufferFrames */,
+                        double /* streamTime */, RtAudioStreamStatus /* status */,
+                        void * /* data */ ) // last arg is used for "this"
 {
     seq++;
     seq %= 65536;
     if (seq%500 == 0)
         std::cout << "packet to network = " << seq << std::endl;
-//    printSamples((MY_TYPE *)inputBuffer);
+    //    printSamples((MY_TYPE *)inputBuffer);
     send(seq,(int8_t *)inputBuffer);
-
     //    QMutexLocker locker(&mUdp->mMutex);
     if(mRptr == mWptr) mRptr = mRing / 2;
-    if (mRptr < 0) mRptr = 0;
+    //    if (mRptr < 0) mRptr = 0;
     mRptr %= mRing;
     memcpy(outputBuffer, mInBuffer[mRptr],
-            HackTrip::mAudioDataLen);
+           HackTrip::mAudioDataLen);
     mRptr++;
 
-    //            memcpy(outputBuffer, inputBuffer, HackTrip::mAudioDataLen);
-    //    sineTest((MY_TYPE *)outputBuffer);
+    //    memcpy(outputBuffer, inputBuffer, HackTrip::mAudioDataLen); // test straight wire
+    //    mTest->sineTest((MY_TYPE *)outputBuffer); // output sines
+    //    mTest->printSamples((MY_TYPE *)outputBuffer); // print audio signal
 
     return 0;
 }
@@ -180,25 +181,6 @@ void UDP::stop()
     //    }
 }
 
-void Audio::sineTest(MY_TYPE *buffer) {
-    for ( int ch=0; ch < HackTrip::mChannels; ch++ ) {
-        for ( int i=0; i < HackTrip::mFPP; i++ ) {
-            double tmp = sin(mPhasor[ch]);
-            *buffer++ = (MY_TYPE) (tmp * HackTrip::mScale);
-            mPhasor[ch] += ((ch) ? 0.020 : 0.022);
-        }
-    }
-}
-
-void Audio::printSamples(MY_TYPE *buffer) {
-    for ( int ch=0; ch < HackTrip::mChannels; ch++ ) {
-        for ( int i=0; i < HackTrip::mFPP; i++ ) {
-            double tmp = ((MY_TYPE) *buffer++) * HackTrip::mInvScale;
-            std::cout << "\t" << tmp << std::endl;
-        }
-    }
-}
-
 int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                   unsigned int nBufferFrames, double streamTime,
                                   RtAudioStreamStatus status, void *arg)
@@ -208,7 +190,6 @@ int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
 }
 
 void Audio::start() {
-    mPhasor.resize(HackTrip::mChannels, 0.0);
     m_streamTimePrintIncrement = 1.0; // seconds
     m_streamTimePrintTime = 1.0; // seconds
     m_adac = new RtAudio();
@@ -268,4 +249,27 @@ void Audio::stop()
                 std::cout << "Audio stream closed" << std::endl;
             }
         }
+}
+
+TestAudio::TestAudio(int channels) {
+    mPhasor.resize(channels, 0.0);
+}
+
+void TestAudio::sineTest(MY_TYPE *buffer) {
+    for ( int ch=0; ch < HackTrip::mChannels; ch++ ) {
+        for ( int i=0; i < HackTrip::mFPP; i++ ) {
+            double tmp = sin(mPhasor[ch]);
+            *buffer++ = (MY_TYPE) (tmp * HackTrip::mScale);
+            mPhasor[ch] += ((ch) ? 0.20 : 0.22);
+        }
+    }
+}
+
+void TestAudio::printSamples(MY_TYPE *buffer) {
+    for ( int ch=0; ch < HackTrip::mChannels; ch++ ) {
+        for ( int i=0; i < HackTrip::mFPP; i++ ) {
+            double tmp = ((MY_TYPE) *buffer++) * HackTrip::mInvScale;
+            std::cout << "\t" << tmp << std::endl;
+        }
+    }
 }

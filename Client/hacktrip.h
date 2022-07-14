@@ -32,10 +32,20 @@ public:
     uint8_t NumOutgoingChannelsToNet;    ///< Number of outgoing Channels to the network
 };
 
+class TestAudio {
+public:
+    TestAudio(int channels);
+    void printSamples(MY_TYPE *buffer);
+    void sineTest(MY_TYPE *buffer);
+private:
+    std::vector<double> mPhasor;
+};
+
 class UDP : public QUdpSocket {
 public:
     void start();
     void setPeerUdpPort(int port) { mPeerUdpPort = port; }
+    void setTest(int channels) { mTest = new TestAudio(channels); }
     void stop();
     void send(int seq, int8_t *audioBuf);
     QMutex mMutex;                     ///< Mutex to protect read and write operations
@@ -54,6 +64,7 @@ private:
     QByteArray mBufSend;
     QByteArray mBufRcv;
     int seq;
+    TestAudio * mTest;
 public slots:
     void readPendingDatagrams();
 };
@@ -73,7 +84,6 @@ public:
                                       RtAudioStreamStatus status, void *arg);
     unsigned int bufferFrames;
     unsigned int bufferBytes;
-    static void printSamples(MY_TYPE *buffer);
     void setUdp(UDP * udp) { mUdp = udp; }
 private:
     // these are identical to the rtaudio/tests/Duplex.cpp example
@@ -92,8 +102,6 @@ private:
     RtAudio::StreamOptions options;
     RtAudio *mRTaudio;
     UDP * mUdp;
-    std::vector<double> mPhasor;
-    void sineTest(MY_TYPE *buffer);
 };
 
 class HackTrip
@@ -120,6 +128,7 @@ private:
     friend class TCP;
     friend class UDP;
     friend class Audio;
+    friend class TestAudio;
     TCP mTcp;
     UDP mUdp;
     Audio mAudio;
