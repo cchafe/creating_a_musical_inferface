@@ -68,8 +68,6 @@ public:
 class Audio
 {
 public:
-    Audio(UDP * udp);
-    ~Audio();
     void start();
     void stop();
     static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
@@ -78,6 +76,7 @@ public:
     unsigned int bufferFrames;
     unsigned int bufferBytes;
     static void printSamples(MY_TYPE *buffer);
+    void setUdp(UDP * udp) { mUdp = udp; }
 private:
     // these are identical to the rtaudio/tests/Duplex.cpp example
     // except with m_ prepended
@@ -94,11 +93,7 @@ private:
     RtAudio::StreamParameters m_oParams;
     RtAudio::StreamOptions options;
     RtAudio *mRTaudio;
-    int audio_callback(void *outputBuffer, void *inputBuffer,
-                       unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus,
-                       void *bytesInfoFromStreamOpen);
     UDP * mUdp;
-    int seq;
     std::vector<double> mPhasor;
     void sineTest(MY_TYPE *buffer);
 };
@@ -106,8 +101,6 @@ private:
 class HackTrip
 {
 public:
-    HackTrip();
-    ~HackTrip();
     void connect();
     void run();
     void stop();
@@ -131,7 +124,7 @@ private:
     friend class Audio;
     TCP mTcp;
     UDP mUdp;
-        Audio *mAudio;
+    Audio mAudio;
 };
 
 #endif // HACKTRIP_H

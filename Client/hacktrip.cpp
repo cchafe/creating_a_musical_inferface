@@ -5,14 +5,10 @@
 #include <sys/types.h>
 #include <math.h>
 
-HackTrip::HackTrip()
-{
-    mAudio = new Audio(&mUdp);
-}
-
 void HackTrip::connect()
 {
     mUdp.setPeerUdpPort( mTcp.connectToServer() );
+    mAudio.setUdp(&mUdp);
 }
 
 int TCP::connectToServer()
@@ -60,19 +56,14 @@ void HackTrip::run()
         QThread::msleep(5); // needs spacing
         mUdp.send(i,(int8_t *)&startBuf);
     }
-    mAudio->start();
+    mAudio.start();
 }
 
 void HackTrip::stop()
 {
     mUdp.quit = true;
     mUdp.stop();
-    //    QThread::msleep(100);
-    mAudio->stop();
-}
-
-HackTrip:: ~HackTrip() {
-    //    delete mAudio;
+    mAudio.stop();
 }
 
 void UDP::start() {
@@ -118,6 +109,7 @@ void UDP::start() {
             tmp[j] = 0;
         mInBuffer.push_back(tmp);
     }
+    seq = 0;
 };
 
 //https://stackoverflow.com/questions/40200535/c-qt-qudp-socket-not-sending-receiving-data
@@ -125,7 +117,10 @@ void UDP::start() {
 void UDP::readPendingDatagrams() {
     //read datagrams in a loop to make sure that all received datagrams are processed
     //since readyRead() is emitted for a datagram only when all previous datagrams are read
-    if (quit) return;
+    if (quit) {
+        std::cout << " quit readPendingDatagrams \n";
+        return;
+    }
     //    QMutexLocker locker(&mMutex);
     while(hasPendingDatagrams()){
         QHostAddress sender;
@@ -155,12 +150,12 @@ void UDP::send(int seq, int8_t *audioBuf) {
 }
 
 int UDP::audioCallback( void *outputBuffer, void *inputBuffer,
-                           unsigned int nBufferFrames,
-                           double streamTime, RtAudioStreamStatus /* status */,
+                           unsigned int /* nBufferFrames */,
+                           double /* streamTime */, RtAudioStreamStatus /* status */,
                            void * /* data */ ) // last arg is used for "this"
 {
     if(quit) {
-        std::cout << " quit!!! \n";
+        std::cout << " quit audioCallback \n";
         return 1;
     }
     seq++;
@@ -201,52 +196,6 @@ void UDP::stop()
     //    }
 }
 
-Audio::Audio(UDP *udp)
-    : mUdp(udp)
-{
-    m_adac = 0;
-    seq = 0;
-};
-
-Audio:: ~Audio() {
-    std::cout << "0\n";
-    delete m_adac;
-}
-
-int Audio::audio_callback( void *outputBuffer, void *inputBuffer,
-                           unsigned int nBufferFrames,
-                           double streamTime, RtAudioStreamStatus /* status */,
-                           void * /* data */ ) // last arg is used for "this"
-{
-    if(mUdp->quit) {
-        std::cout << " quit!!! \n";
-        return 1;
-    }
-    if ( streamTime >= m_streamTimePrintTime ) {
-        std::cout << " audio_callback" << " nBufferFrames " << nBufferFrames << " streamTime " << streamTime << std::endl;
-        m_streamTimePrintTime += m_streamTimePrintIncrement;
-    }
-    seq++;
-    seq %= 65536;
-    if (seq%500 == 0)
-        std::cout << "packet to network = " << seq << std::endl;
-//    printSamples((MY_TYPE *)inputBuffer);
-    mUdp->send(seq,(int8_t *)inputBuffer);
-
-    //    QMutexLocker locker(&mUdp->mMutex);
-    if(mUdp->mRptr == mUdp->mWptr) mUdp->mRptr = mUdp->mRing / 2;
-    if (mUdp->mRptr < 0) mUdp->mRptr = 0;
-    mUdp->mRptr %= mUdp->mRing;
-    memcpy(outputBuffer, mUdp->mInBuffer[mUdp->mRptr],
-            HackTrip::mAudioDataLen);
-    mUdp->mRptr++;
-
-    //            memcpy(outputBuffer, inputBuffer, HackTrip::mAudioDataLen);
-    //    sineTest((MY_TYPE *)outputBuffer);
-
-    return 0;
-}
-
 void Audio::sineTest(MY_TYPE *buffer) {
     for ( int ch=0; ch < HackTrip::mChannels; ch++ ) {
         for ( int i=0; i < HackTrip::mFPP; i++ ) {
@@ -273,13 +222,6 @@ int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
     return static_cast<UDP*>(arg)->audioCallback(
                 outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
-//int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
-//                                  unsigned int nBufferFrames, double streamTime,
-//                                  RtAudioStreamStatus status, void *arg)
-//{
-//    return static_cast<Audio*>(arg)->audio_callback(
-//                outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
-//}
 
 void Audio::start() {
     mPhasor.resize(HackTrip::mChannels, 0.0);
@@ -342,5 +284,4 @@ void Audio::stop()
                 std::cout << "Audio stream closed" << std::endl;
             }
         }
-    std::cout << "-1\n";
 }
