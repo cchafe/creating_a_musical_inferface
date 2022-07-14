@@ -19,7 +19,6 @@ typedef signed short MY_TYPE; // audio interface data is 16bit ints
 #define FORMAT RTAUDIO_SINT16 // which has this rtaudio name
 #define SCALE 32767.0 // audio samples for processing are doubles, so this is the conversion
 
-
 struct HeaderStruct {
 public:
     // watch out for alignment...
@@ -48,15 +47,15 @@ public:
     void setTest(int channels) { mTest = new TestAudio(channels); }
     void stop();
     void send(int seq, int8_t *audioBuf);
-    QMutex mMutex;                     ///< Mutex to protect read and write operations
-    int mWptr;
-    int mRptr;
-    int mRing;
-    std::vector<int8_t*> mInBuffer;
     int audioCallback(void *outputBuffer, void *inputBuffer,
                        unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus,
                        void *bytesInfoFromStreamOpen);
 private:
+    //    QMutex mMutex;                     ///< Mutex to protect read and write operations
+    int mWptr;
+    int mRptr;
+    int mRing;
+    std::vector<int8_t*> mRingBuffer;
     QHostAddress serverHostAddress;
     HeaderStruct mHeader;
     QHostAddress mPeerAddr;
@@ -82,8 +81,6 @@ public:
     static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                       unsigned int nBufferFrames, double streamTime,
                                       RtAudioStreamStatus status, void *arg);
-    unsigned int bufferFrames;
-    unsigned int bufferBytes;
     void setUdp(UDP * udp) { mUdp = udp; }
 private:
     // these are identical to the rtaudio/tests/Duplex.cpp example
@@ -111,20 +108,18 @@ public:
     void run();
     void stop();
 private:
-    const QString mPort = "4464";
-    static const int mBytesPerSample = sizeof(MY_TYPE);
     static const int mServerTcpPort = 4464;
-    static const int mAudioPort = 4464;
+    static const int mLocalAudioUdpPort = 4464;
     static const int mFPP = 256;
     static const int mSocketWaitMs = 1500;
     static const int mSampleRate = 48000;
     static const int mChannels = 2;
-    static const int mBufferQueueLength = 3;
-    static const int mNumberOfBuffersRtAudio = 2;
+    static const int mBufferQueueLength = 3; // queue not used for localhost testing
+    static const int mBytesPerSample = sizeof(MY_TYPE);
     static const int mAudioDataLen = mFPP * mChannels * mBytesPerSample;
     constexpr static const double mScale = 32767.0;
     constexpr static const double mInvScale = 1.0 / 32767.0;
-
+    static const int mNumberOfBuffersSuggestionToRtAudio = 2;
     friend class TCP;
     friend class UDP;
     friend class Audio;

@@ -28,7 +28,7 @@ int TCP::connectToServer()
     char* port_buf = new char[sizeof(u_int32_t)];
     if (state()==QTcpSocket::ConnectedState) {
         QByteArray ba;
-        qint32 tmp = HackTrip::mAudioPort;
+        qint32 tmp = HackTrip::mLocalAudioUdpPort;
         ba.setNum(tmp);
         write(ba);
         waitForBytesWritten(1500);
@@ -90,7 +90,7 @@ void UDP::start() {
     //               (void *) &optval, sizeof(optval));
     //    setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
     int ret = 0;
-    ret = bind(HackTrip::mAudioPort);
+    ret = bind(HackTrip::mLocalAudioUdpPort);
     std::cout << "UDP: start send = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
     connect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
     mRing = 50;
@@ -100,7 +100,7 @@ void UDP::start() {
         int8_t* tmp = new int8_t[HackTrip::mAudioDataLen];
         for (int j = 0; j < HackTrip::mAudioDataLen; j++)
             tmp[j] = 0;
-        mInBuffer.push_back(tmp);
+        mRingBuffer.push_back(tmp);
     }
     seq = 0;
 };
@@ -123,7 +123,7 @@ void UDP::readPendingDatagrams() {
             std::cout << "UDP rcv: seq = " << seq << std::endl;
         int8_t *audioBuf = (int8_t *)(mBufRcv.data() + sizeof(HeaderStruct));
         //        Audio::printSamples((MY_TYPE *)audioBuf);
-        memcpy(mInBuffer[mWptr],audioBuf,HackTrip::mAudioDataLen);
+        memcpy(mRingBuffer[mWptr],audioBuf,HackTrip::mAudioDataLen);
         mWptr++;
         mWptr %= mRing;
     }
@@ -147,16 +147,16 @@ int UDP::audioCallback( void *outputBuffer, void *inputBuffer,
     seq %= 65536;
     if (seq%500 == 0)
         std::cout << "packet to network = " << seq << std::endl;
-    //    printSamples((MY_TYPE *)inputBuffer);
     send(seq,(int8_t *)inputBuffer);
     //    QMutexLocker locker(&mUdp->mMutex);
     if(mRptr == mWptr) mRptr = mRing / 2;
     //    if (mRptr < 0) mRptr = 0;
     mRptr %= mRing;
-    memcpy(outputBuffer, mInBuffer[mRptr],
+    memcpy(outputBuffer, mRingBuffer[mRptr],
            HackTrip::mAudioDataLen);
     mRptr++;
 
+    // audio diagnostics, modify or print output and input buffers
     //    memcpy(outputBuffer, inputBuffer, HackTrip::mAudioDataLen); // test straight wire
     //    mTest->sineTest((MY_TYPE *)outputBuffer); // output sines
     //    mTest->printSamples((MY_TYPE *)outputBuffer); // print audio signal
@@ -176,9 +176,6 @@ void UDP::stop()
     writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
     writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
     close(); // stop rcv
-    //    for (int i = 0; i < mRing; i++) {
-    //        delete[] mInBuffer[i];
-    //    }
 }
 
 int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
@@ -209,7 +206,7 @@ void Audio::start() {
     m_oParams.nChannels = m_channels;
     m_oParams.firstChannel = m_oOffset;
     options.flags = RTAUDIO_NONINTERLEAVED | RTAUDIO_SCHEDULE_REALTIME;
-    options.numberOfBuffers = HackTrip::mNumberOfBuffersRtAudio; // Windows DirectSound, Linux OSS, and Linux Alsa APIs only.
+    options.numberOfBuffers = HackTrip::mNumberOfBuffersSuggestionToRtAudio; // Windows DirectSound, Linux OSS, and Linux Alsa APIs only.
     // value set by the user is replaced during execution of the RtAudio::openStream() function by the value actually used by the system
     std::cout << "using default audio interface device\n";
     std::cout << m_adac->getDeviceInfo(m_iDevice).name
@@ -217,8 +214,7 @@ void Audio::start() {
     std::cout << "\tIf another is needed, either change your settings\n";
     std::cout << "\tor the choice in the code\n";
     m_adac->showWarnings(true);
-    bufferFrames = HackTrip::mFPP;
-    bufferBytes = HackTrip::mFPP*HackTrip::mChannels*sizeof(MY_TYPE);
+    unsigned int bufferFrames = HackTrip::mFPP;
     if (m_adac->openStream( &m_oParams, &m_iParams, FORMAT, HackTrip::mSampleRate,
                             &bufferFrames, &Audio::wrapperProcessCallback,
                             (void*)mUdp,  &options ))
