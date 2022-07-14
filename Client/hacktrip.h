@@ -38,7 +38,6 @@ public:
     void setPeerUdpPort(int port) { mPeerUdpPort = port; }
     void stop();
     void send(int seq, int8_t *audioBuf);
-    bool quit;
     QMutex mMutex;                     ///< Mutex to protect read and write operations
     int mWptr;
     int mRptr;
@@ -62,7 +61,6 @@ public slots:
 class TCP : public QTcpSocket {
 public:
     int connectToServer();
-    void sendToServer();
 };
 
 class Audio

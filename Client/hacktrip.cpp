@@ -41,11 +41,6 @@ int TCP::connectToServer()
     return peerUdpPort;
 }
 
-void TCP::sendToServer()
-{
-
-}
-
 void HackTrip::run()
 {
     mUdp.start();
@@ -61,7 +56,6 @@ void HackTrip::run()
 
 void HackTrip::stop()
 {
-    mUdp.quit = true;
     mUdp.stop();
     mAudio.stop();
 }
@@ -89,8 +83,6 @@ void UDP::start() {
             serverHostAddress = info.addresses().constFirst();
         }
     }
-
-    quit = false;
 //    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 //    int optval = 1;
 //    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
@@ -117,10 +109,6 @@ void UDP::start() {
 void UDP::readPendingDatagrams() {
     //read datagrams in a loop to make sure that all received datagrams are processed
     //since readyRead() is emitted for a datagram only when all previous datagrams are read
-    if (quit) {
-        std::cout << " quit readPendingDatagrams \n";
-        return;
-    }
     //    QMutexLocker locker(&mMutex);
     while(hasPendingDatagrams()){
         QHostAddress sender;
@@ -154,10 +142,6 @@ int UDP::audioCallback( void *outputBuffer, void *inputBuffer,
                            double /* streamTime */, RtAudioStreamStatus /* status */,
                            void * /* data */ ) // last arg is used for "this"
 {
-    if(quit) {
-        std::cout << " quit audioCallback \n";
-        return 1;
-    }
     seq++;
     seq %= 65536;
     if (seq%500 == 0)
