@@ -25,13 +25,13 @@ int TCP::connectToServer()
             serverHostAddress = info.addresses().constFirst();
         }
     }
-    connectToHost(serverHostAddress,4464);
+    connectToHost(serverHostAddress,HackTrip::mServerTcpPort);
     waitForConnected(HackTrip::mSocketWaitMs);
-    int peerUdpPort =0;
+    int peerUdpPort = 0;
     char* port_buf = new char[sizeof(u_int32_t)];
     if (state()==QTcpSocket::ConnectedState) {
         QByteArray ba;
-        qint32 tmp = 4464;
+        qint32 tmp = HackTrip::mAudioPort;
         ba.setNum(tmp);
         write(ba);
         waitForBytesWritten(1500);
@@ -84,9 +84,13 @@ void UDP::start() {
     mHeader.NumIncomingChannelsFromNet = HackTrip::mChannels;
     mHeader.NumOutgoingChannelsToNet = HackTrip::mChannels;
     int packetDataLen = sizeof(HeaderStruct) + HackTrip::mAudioDataLen;
-    mBuf.resize(packetDataLen);
-    mBuf.fill(0,packetDataLen);
-    memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
+    mBufSend.resize(packetDataLen);
+    mBufSend.fill(0,packetDataLen);
+    memcpy(mBufSend.data(),&mHeader,sizeof(HeaderStruct));
+    mBufRcv.resize(packetDataLen);
+    mBufRcv.fill(0,packetDataLen);
+    memcpy(mBufRcv.data(),&mHeader,sizeof(HeaderStruct));
+
     if (!serverHostAddress.setAddress(gServer)) {
         QHostInfo info = QHostInfo::fromName(gServer);
         if (!info.addresses().isEmpty()) {
@@ -96,11 +100,11 @@ void UDP::start() {
     }
 
     quit = false;
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    int optval = 1;
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
-               (void *) &optval, sizeof(optval));
-    setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
+//    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+//    int optval = 1;
+//    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
+//               (void *) &optval, sizeof(optval));
+//    setSocketDescriptor(sockfd, QUdpSocket::UnconnectedState);
     int ret = 0;
     ret = bind(HackTrip::mAudioPort);
     std::cout << "UDP: start send = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
@@ -124,18 +128,18 @@ void UDP::readPendingDatagrams() {
     if (quit) return;
     //    QMutexLocker locker(&mMutex);
     while(hasPendingDatagrams()){
-        QByteArray datagram;
-        datagram.resize(pendingDatagramSize());
         QHostAddress sender;
         quint16 senderPort;
-        readDatagram(datagram.data(), datagram.size(),
+        readDatagram(mBufRcv.data(), mBufRcv.size(),
                      &sender, &senderPort);
-        memcpy(&mHeader,mBuf.data(),sizeof(HeaderStruct));
+//        std::cout << sender.toIPv4Address() << " " << senderPort << std::endl;
+        memcpy(&mHeader,mBufRcv.data(),sizeof(HeaderStruct));
         int seq = mHeader.SeqNumber;
         if (seq%500 == 0)
             std::cout << "UDP rcv: seq = " << seq << std::endl;
-        int8_t *audioBuf = (int8_t *)(mBuf.data() + sizeof(HeaderStruct));
-//        memcpy(mInBuffer[mWptr],audioBuf,HackTrip::mAudioDataLen);
+        int8_t *audioBuf = (int8_t *)(mBufRcv.data() + sizeof(HeaderStruct));
+//        Audio::printSamples((MY_TYPE *)audioBuf);
+        memcpy(mInBuffer[mWptr],audioBuf,HackTrip::mAudioDataLen);
         mWptr++;
         mWptr %= mRing;
     }
@@ -143,12 +147,9 @@ void UDP::readPendingDatagrams() {
 
 void UDP::send(int seq, int8_t *audioBuf) {
     mHeader.SeqNumber = (uint16_t)seq;
-    memcpy(mBuf.data(),&mHeader,sizeof(HeaderStruct));
-
-    //    mRegFromHackTrip->ILtoNonIL((int8_t *)audioBuf);
-
-    memcpy(mBuf.data()+sizeof(HeaderStruct),audioBuf,HackTrip::mAudioDataLen);
-    writeDatagram(mBuf, serverHostAddress, mPeerUdpPort);
+    memcpy(mBufSend.data(),&mHeader,sizeof(HeaderStruct));
+    memcpy(mBufSend.data()+sizeof(HeaderStruct),audioBuf,HackTrip::mAudioDataLen);
+    writeDatagram(mBufSend, serverHostAddress, mPeerUdpPort);
     if (seq%500 == 0)
         std::cout << "UDP send: packet = " << seq << std::endl;
 }
@@ -199,7 +200,7 @@ int Audio::audio_callback( void *outputBuffer, void *inputBuffer,
     seq %= 65536;
     if (seq%500 == 0)
         std::cout << "packet to network = " << seq << std::endl;
-    printSamples((MY_TYPE *)inputBuffer);
+//    printSamples((MY_TYPE *)inputBuffer);
     mUdp->send(seq,(int8_t *)inputBuffer);
 
     //    QMutexLocker locker(&mUdp->mMutex);
