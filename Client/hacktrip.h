@@ -8,6 +8,7 @@
 #include <QUdpSocket>
 #include <QMutex>
 
+const QString gVersion = "clientV1";
 //const QString gServer = "54.193.131.283";
 const QString gServer = "jackloop256.stanford.edu";
 //const QString gServer = "cmn55.stanford.edu";
