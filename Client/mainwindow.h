@@ -20,7 +20,7 @@ private:
     HackTrip * ht;
 
 private slots:
-    void on_connectButton_clicked();
+//    void on_connectButton_clicked();
 
     void on_runButton_clicked();
 

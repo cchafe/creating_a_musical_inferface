@@ -15,15 +15,10 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::on_connectButton_clicked()
+void MainWindow::on_runButton_clicked()
 {
     if (ht != nullptr) delete ht;
     ht = new HackTrip();
-    ht->connect(); // grab the next free client slot from server pool
-}
-
-void MainWindow::on_runButton_clicked()
-{
     ht->run();
 }
 
