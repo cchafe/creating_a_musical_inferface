@@ -43,13 +43,6 @@ int TCP::connectToServer()
 void HackTrip::run()
 {
     mUdp.start();
-//    QByteArray startBuf;
-//    startBuf.resize(mAudioDataLen);
-//    startBuf.fill(0xff,mAudioDataLen);
-//    for (int i = 0; i<25000; i++) { // needs more than 5
-//        QThread::msleep(5); // needs spacing
-//        mUdp.send(i,(int8_t *)&startBuf);
-//    }
 }
 
 void HackTrip::stop()
@@ -101,7 +94,8 @@ void UDP::start() {
     }
     mSendSeq = 0;
     mRcvTmer.start();
-    mRcvTimeout.start(50);
+    connect(&mSendTmer, &QTimer::timeout, this, &UDP::sendDummyData);
+    mSendTmer.start(HackTrip::mPacketPeriodMS);
 };
 
 //https://stackoverflow.com/questions/40200535/c-qt-qudp-socket-not-sending-receiving-data
@@ -111,13 +105,11 @@ void UDP::readPendingDatagrams() {
     //since readyRead() is emitted for a datagram only when all previous datagrams are read
     //    QMutexLocker locker(&mMutex);
 
-//    std::cout << "rcv: " << (double)mRcvTmer.nsecsElapsed() / 1000000.0 << std::endl;
     mRcvTmer.start();
-    mRcvTimeout.start(1000);
-
+    mRcvTimeout.start(HackTrip::mTimeoutMS);
     while(hasPendingDatagrams()) {
-//        std::cout << "rcv: pendingDatagramSize = " << pendingDatagramSize() << std::endl;
-//        if () qApp->quit();
+        int size = pendingDatagramSize();
+        if (size==HackTrip::mExitPacketSize) stop();
         QHostAddress sender;
         quint16 senderPort;
         readDatagram(mBufRcv.data(), mBufRcv.size(),
@@ -162,13 +154,16 @@ void UDP::send(int8_t *audioBuf) {
 
 void UDP::stop()
 {
+    disconnect(&mSendTmer, &QTimer::timeout, this, &UDP::sendDummyData);
+    mSendTmer.stop();
+    disconnect(&mRcvTimeout, &QTimer::timeout, this, &UDP::rcvTimeout);
+    mRcvTimeout.stop();
     disconnect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
     // Send exit packet (with 1 redundant packet).
-    int controlPacketSize = 63;
     std::cout << "sending exit packet" << std::endl;
     QByteArray stopBuf;
-    stopBuf.resize(controlPacketSize);
-    stopBuf.fill(0xff,controlPacketSize);
+    stopBuf.resize(HackTrip::mExitPacketSize);
+    stopBuf.fill(0xff,HackTrip::mExitPacketSize);
     writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
     writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
     close(); // stop rcv

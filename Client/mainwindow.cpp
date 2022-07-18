@@ -26,10 +26,6 @@ void MainWindow::on_connectButton_clicked()
 void MainWindow::on_runButton_clicked()
 {
     ht->run();
-    UDP * udp = ht->getUdp();
-    QTimer *timer = new QTimer(this);
-       connect(timer, &QTimer::timeout, udp, &UDP::sendDummyData);
-       timer->start(5);
 }
 
 void MainWindow::on_stopButton_clicked()

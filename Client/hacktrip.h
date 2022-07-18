@@ -53,6 +53,7 @@ private:
     int mSendSeq;
     QElapsedTimer mRcvTmer;
     QTimer mRcvTimeout;
+    QTimer mSendTmer;
 public slots:
     void readPendingDatagrams();
     void sendDummyData();
@@ -70,7 +71,6 @@ public:
     void connect();
     void run();
     void stop();
-    UDP * getUdp() { return &mUdp; }
 private:
     static const int mServerTcpPort = 4464;
     static const int mLocalAudioUdpPort = 4464;
@@ -81,6 +81,9 @@ private:
     static const int mBufferQueueLength = 3; // queue not used for localhost testing
     static const int mBytesPerSample = sizeof(MY_TYPE);
     static const int mAudioDataLen = mFPP * mChannels * mBytesPerSample;
+    static const int mExitPacketSize = 63;
+    static const int mTimeoutMS = 1000;
+    constexpr static const double mPacketPeriodMS = (1000.0 / (double)(mSampleRate / mFPP));
     friend class TCP;
     friend class UDP;
     friend class TestAudio;
