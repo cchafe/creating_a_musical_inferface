@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QTimer>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -22,7 +23,6 @@ void MainWindow::on_connectButton_clicked()
     ht->connect(); // grab the next free client slot from server pool
 }
 
-#include <QTimer>
 void MainWindow::on_runButton_clicked()
 {
     ht->run();

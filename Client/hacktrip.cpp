@@ -89,6 +89,7 @@ void UDP::start() {
     ret = bind(HackTrip::mLocalAudioUdpPort);
     std::cout << "UDP: start send = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
     connect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
+    connect(&mRcvTimeout, &QTimer::timeout, this, &UDP::rcvTimeout);
     mRing = 50;
     mWptr = mRing / 2;
     mRptr = 0;
@@ -99,6 +100,8 @@ void UDP::start() {
         mRingBuffer.push_back(tmp);
     }
     mSendSeq = 0;
+    mRcvTmer.start();
+    mRcvTimeout.start(50);
 };
 
 //https://stackoverflow.com/questions/40200535/c-qt-qudp-socket-not-sending-receiving-data
@@ -107,6 +110,11 @@ void UDP::readPendingDatagrams() {
     //read datagrams in a loop to make sure that all received datagrams are processed
     //since readyRead() is emitted for a datagram only when all previous datagrams are read
     //    QMutexLocker locker(&mMutex);
+
+//    std::cout << "rcv: " << (double)mRcvTmer.nsecsElapsed() / 1000000.0 << std::endl;
+    mRcvTmer.start();
+    mRcvTimeout.start(1000);
+
     while(hasPendingDatagrams()) {
         QHostAddress sender;
         quint16 senderPort;
@@ -123,6 +131,12 @@ void UDP::readPendingDatagrams() {
         mWptr++;
         mWptr %= mRing;
     }
+}
+
+void UDP::rcvTimeout()
+{
+    std::cout << "rcv: ms since last packet = " << (double)mRcvTmer.nsecsElapsed() / 1000000.0 << std::endl;
+    mRcvTimeout.start();
 }
 
 void UDP::sendDummyData()
