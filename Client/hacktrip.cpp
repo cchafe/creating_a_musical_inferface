@@ -116,6 +116,8 @@ void UDP::readPendingDatagrams() {
     mRcvTimeout.start(1000);
 
     while(hasPendingDatagrams()) {
+//        std::cout << "rcv: pendingDatagramSize = " << pendingDatagramSize() << std::endl;
+//        if () qApp->quit();
         QHostAddress sender;
         quint16 senderPort;
         readDatagram(mBufRcv.data(), mBufRcv.size(),
