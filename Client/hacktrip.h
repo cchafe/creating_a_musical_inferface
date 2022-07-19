@@ -6,7 +6,7 @@
 #include <QThread>
 #include <QHostInfo>
 #include <QUdpSocket>
-#include <QMutex>
+#include <QTimer>
 
 const QString gVersion = "clientV2";
 //const QString gServer = "54.215.249.223";
@@ -47,7 +47,7 @@ public:
     void setPeerUdpPort(int port) { mPeerUdpPort = port; }
     void setTest(int channels) { mTest = new TestAudio(channels); }
     void stop();
-    void send(int seq, int8_t *audioBuf);
+    void send(int8_t *audioBuf);
     int audioCallback(void *outputBuffer, void *inputBuffer,
                        unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus,
                        void *bytesInfoFromStreamOpen);
@@ -63,10 +63,15 @@ private:
     int mPeerUdpPort;
     QByteArray mBufSend;
     QByteArray mBufRcv;
-    int seq;
+    int mSendSeq;
+    QElapsedTimer mRcvTmer;
+    QTimer mRcvTimeout;
+    QTimer mSendTmer;
     TestAudio * mTest;
 public slots:
     void readPendingDatagrams();
+    void sendDummyData();
+    void rcvTimeout();
 };
 
 class TCP : public QTcpSocket {
@@ -121,6 +126,9 @@ private:
     constexpr static const double mScale = 32767.0;
     constexpr static const double mInvScale = 1.0 / 32767.0;
     static const int mNumberOfBuffersSuggestionToRtAudio = 2;
+    static const int mExitPacketSize = 63;
+    static const int mTimeoutMS = 1000;
+    constexpr static const double mPacketPeriodMS = (1000.0 / (double)(mSampleRate / mFPP));
     friend class TCP;
     friend class UDP;
     friend class Audio;

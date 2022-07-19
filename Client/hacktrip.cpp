@@ -46,12 +46,6 @@ void HackTrip::run()
 {
     mUdp.start();
     QByteArray startBuf;
-    startBuf.resize(mAudioDataLen);
-    startBuf.fill(0xff,mAudioDataLen);
-    for (int i = 0; i<25; i++) { // needs more than 5
-        QThread::msleep(5); // needs spacing
-        mUdp.send(i,(int8_t *)&startBuf);
-    }
     mAudio.start();
 }
 
@@ -93,6 +87,7 @@ void UDP::start() {
     ret = bind(HackTrip::mLocalAudioUdpPort);
     std::cout << "UDP: start send = " << ret << " " << serverHostAddress.toString().toLocal8Bit().data() <<  std::endl;
     connect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
+    connect(&mRcvTimeout, &QTimer::timeout, this, &UDP::rcvTimeout);
     mRing = 50;
     mWptr = mRing / 2;
     mRptr = 0;
@@ -102,7 +97,10 @@ void UDP::start() {
             tmp[j] = 0;
         mRingBuffer.push_back(tmp);
     }
-    seq = 0;
+    mSendSeq = 0;
+    mRcvTmer.start();
+    connect(&mSendTmer, &QTimer::timeout, this, &UDP::sendDummyData);
+    mSendTmer.start(HackTrip::mPacketPeriodMS);
 };
 
 //https://stackoverflow.com/questions/40200535/c-qt-qudp-socket-not-sending-receiving-data
@@ -111,16 +109,21 @@ void UDP::readPendingDatagrams() {
     //read datagrams in a loop to make sure that all received datagrams are processed
     //since readyRead() is emitted for a datagram only when all previous datagrams are read
     //    QMutexLocker locker(&mMutex);
-    while(hasPendingDatagrams()){
+
+    mRcvTmer.start();
+    mRcvTimeout.start(HackTrip::mTimeoutMS);
+    while(hasPendingDatagrams()) {
+        int size = pendingDatagramSize();
+        if (size==HackTrip::mExitPacketSize) stop();
         QHostAddress sender;
         quint16 senderPort;
         readDatagram(mBufRcv.data(), mBufRcv.size(),
                      &sender, &senderPort);
         //        std::cout << sender.toIPv4Address() << " " << senderPort << std::endl;
         memcpy(&mHeader,mBufRcv.data(),sizeof(HeaderStruct));
-        int seq = mHeader.SeqNumber;
-        if (seq%500 == 0)
-            std::cout << "UDP rcv: seq = " << seq << std::endl;
+        int rcvSeq = mHeader.SeqNumber;
+        if (rcvSeq%500 == 0)
+            std::cout << "UDP rcv: seq = " << rcvSeq << std::endl;
         int8_t *audioBuf = (int8_t *)(mBufRcv.data() + sizeof(HeaderStruct));
         //        Audio::printSamples((MY_TYPE *)audioBuf);
         memcpy(mRingBuffer[mWptr],audioBuf,HackTrip::mAudioDataLen);
@@ -129,13 +132,29 @@ void UDP::readPendingDatagrams() {
     }
 }
 
-void UDP::send(int seq, int8_t *audioBuf) {
-    mHeader.SeqNumber = (uint16_t)seq;
+void UDP::rcvTimeout()
+{
+    std::cout << "rcv: ms since last packet = " << (double)mRcvTmer.nsecsElapsed() / 1000000.0 << std::endl;
+    mRcvTimeout.start();
+}
+
+void UDP::sendDummyData()
+{
+    QByteArray fakeAudioBuf;
+    fakeAudioBuf.resize(HackTrip::mAudioDataLen);
+    fakeAudioBuf.fill(0xff,HackTrip::mAudioDataLen);
+    send( (int8_t *)&fakeAudioBuf );
+}
+
+void UDP::send(int8_t *audioBuf) {
+    mHeader.SeqNumber = (uint16_t)mSendSeq;
     memcpy(mBufSend.data(),&mHeader,sizeof(HeaderStruct));
     memcpy(mBufSend.data()+sizeof(HeaderStruct),audioBuf,HackTrip::mAudioDataLen);
     writeDatagram(mBufSend, serverHostAddress, mPeerUdpPort);
-    if (seq%500 == 0)
-        std::cout << "UDP send: packet = " << seq << std::endl;
+    if (mSendSeq%500 == 0)
+        std::cout << "UDP send: packet = " << mSendSeq << std::endl;
+    mSendSeq++;
+    mSendSeq %= 65536;
 }
 
 int UDP::audioCallback( void *outputBuffer, void *inputBuffer,
@@ -143,11 +162,7 @@ int UDP::audioCallback( void *outputBuffer, void *inputBuffer,
                         double /* streamTime */, RtAudioStreamStatus /* status */,
                         void * /* data */ ) // last arg is used for "this"
 {
-    seq++;
-    seq %= 65536;
-    if (seq%500 == 0)
-        std::cout << "packet to network = " << seq << std::endl;
-    send(seq,(int8_t *)inputBuffer);
+    send((int8_t *)inputBuffer);
     //    QMutexLocker locker(&mUdp->mMutex);
     if(mRptr == mWptr) mRptr = mRing / 2;
     //    if (mRptr < 0) mRptr = 0;
@@ -166,13 +181,16 @@ int UDP::audioCallback( void *outputBuffer, void *inputBuffer,
 
 void UDP::stop()
 {
+    disconnect(&mSendTmer, &QTimer::timeout, this, &UDP::sendDummyData);
+    mSendTmer.stop();
+    disconnect(&mRcvTimeout, &QTimer::timeout, this, &UDP::rcvTimeout);
+    mRcvTimeout.stop();
     disconnect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
     // Send exit packet (with 1 redundant packet).
-    int controlPacketSize = 63;
     std::cout << "sending exit packet" << std::endl;
     QByteArray stopBuf;
-    stopBuf.resize(controlPacketSize);
-    stopBuf.fill(0xff,controlPacketSize);
+    stopBuf.resize(HackTrip::mExitPacketSize);
+    stopBuf.fill(0xff,HackTrip::mExitPacketSize);
     writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
     writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
     close(); // stop rcv
