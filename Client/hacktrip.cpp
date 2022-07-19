@@ -45,7 +45,7 @@ int TCP::connectToServer()
 void HackTrip::run()
 {
     mUdp.start();
-    QByteArray startBuf;
+    mAudio.setTest(HackTrip::mChannels);
     mAudio.start();
 }
 
@@ -196,6 +196,21 @@ void UDP::stop()
     close(); // stop rcv
 }
 
+/*
+
+int Audio::audioCallback( void *outputBuffer, void *inputBuffer,
+                        unsigned int /* nBufferFrames */,
+                        double /* streamTime */, RtAudioStreamStatus /* status */,
+                        void * /* data */ ) // last arg is used for "this"
+{
+    // audio diagnostics, modify or print output and input buffers
+//        memcpy(outputBuffer, inputBuffer, HackTrip::mAudioDataLen); // test straight wire
+        mTest->sineTest((MY_TYPE *)outputBuffer); // output sines
+        mTest->printSamples((MY_TYPE *)outputBuffer); // print audio signal
+
+    return 0;
+}
+*/
 int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                   unsigned int nBufferFrames, double streamTime,
                                   RtAudioStreamStatus status, void *arg)
@@ -203,7 +218,15 @@ int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
     return static_cast<UDP*>(arg)->audioCallback(
                 outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
-
+/*
+int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
+                                  unsigned int nBufferFrames, double streamTime,
+                                  RtAudioStreamStatus status, void *arg)
+{
+    return static_cast<Audio*>(arg)->audioCallback(
+                outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
+}
+*/
 void Audio::start() {
     m_streamTimePrintIncrement = 1.0; // seconds
     m_streamTimePrintTime = 1.0; // seconds
@@ -237,7 +260,13 @@ void Audio::start() {
                             &bufferFrames, &Audio::wrapperProcessCallback,
                             (void*)mUdp,  &options ))
         std::cout << "\nCouldn't open audio device streams!\n";
-    if (m_adac->isStreamOpen() == false) {
+/*
+    if (m_adac->openStream( &m_oParams, &m_iParams, FORMAT, HackTrip::mSampleRate,
+                            &bufferFrames, &Audio::wrapperProcessCallback,
+                            (void*)this,  &options ))
+        std::cout << "\nCouldn't open audio device streams!\n";
+
+*/    if (m_adac->isStreamOpen() == false) {
         std::cout << "\nCouldn't open audio device streams!\n";
         exit(1);
     } else {

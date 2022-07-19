@@ -87,7 +87,7 @@ public:
     static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                       unsigned int nBufferFrames, double streamTime,
                                       RtAudioStreamStatus status, void *arg);
-    void setUdp(UDP * udp) { mUdp = udp; }
+    void setTest(int channels) { mTest = new TestAudio(channels); }
 private:
     // these are identical to the rtaudio/tests/Duplex.cpp example
     // except with m_ prepended
@@ -104,7 +104,7 @@ private:
     RtAudio::StreamParameters m_oParams;
     RtAudio::StreamOptions options;
     RtAudio *mRTaudio;
-    UDP * mUdp;
+    TestAudio * mTest;
 };
 
 class HackTrip
