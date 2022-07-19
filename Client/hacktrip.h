@@ -12,12 +12,12 @@
 
 const QString gVersion = "clientV1";
 //const QString gServer = "54.215.249.223";
-//const QString gServer = "jackloop256.stanford.edu";
+const QString gServer = "jackloop256.stanford.edu";
 //const QString gServer = "cmn55.stanford.edu";
 //const QString gServer = "cmn9.stanford.edu";
 //const QString gServer = "171.64.197.158";
 //const QString gServer = "127.0.0.2"; // don't use "loopback", doesn't resolve
-const QString gServer = "localhost";
+//const QString gServer = "localhost";
 typedef signed short MY_TYPE; // audio interface data is 16bit ints
 
 struct HeaderStruct {
