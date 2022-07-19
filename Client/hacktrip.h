@@ -1,7 +1,11 @@
 #ifndef HACKTRIP_H
 #define HACKTRIP_H
 
+//#define AUDIO_ONLY
+
 #include <rtaudio/RtAudio.h>
+
+#ifndef AUDIO_ONLY
 #include <QTcpSocket>
 #include <QThread>
 #include <QHostInfo>
@@ -16,10 +20,22 @@ const QString gServer = "jackloop256.stanford.edu";
 //const QString gServer = "171.64.197.158";
 //const QString gServer = "127.0.0.2"; // don't use "loopback", doesn't resolve
 //const QString gServer = "localhost";
+#endif
+
 typedef signed short MY_TYPE; // audio interface data is 16bit ints
 #define FORMAT RTAUDIO_SINT16 // which has this rtaudio name
 #define SCALE 32767.0 // audio samples for processing are doubles, so this is the conversion
 
+class TestAudio {
+public:
+    TestAudio(int channels);
+    void printSamples(MY_TYPE *buffer);
+    void sineTest(MY_TYPE *buffer);
+private:
+    std::vector<double> mPhasor;
+};
+
+#ifndef AUDIO_ONLY
 struct HeaderStruct {
 public:
     // watch out for alignment...
@@ -30,15 +46,6 @@ public:
     uint8_t BitResolution;  ///< Audio Bit Resolution
     uint8_t NumIncomingChannelsFromNet;  ///< Number of incoming Channels from the network
     uint8_t NumOutgoingChannelsToNet;    ///< Number of outgoing Channels to the network
-};
-
-class TestAudio {
-public:
-    TestAudio(int channels);
-    void printSamples(MY_TYPE *buffer);
-    void sineTest(MY_TYPE *buffer);
-private:
-    std::vector<double> mPhasor;
 };
 
 class UDP : public QUdpSocket {
@@ -78,15 +85,22 @@ class TCP : public QTcpSocket {
 public:
     int connectToServer();
 };
+#endif
 
 class Audio
 {
 public:
     void start();
     void stop();
+    int audioCallback(void *outputBuffer, void *inputBuffer,
+                       unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus,
+                       void *bytesInfoFromStreamOpen);
     static int wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                       unsigned int nBufferFrames, double streamTime,
                                       RtAudioStreamStatus status, void *arg);
+#ifndef AUDIO_ONLY
+    void setUdp(UDP * udp) { mUdp = udp; }
+#endif
     void setTest(int channels) { mTest = new TestAudio(channels); }
 private:
     // these are identical to the rtaudio/tests/Duplex.cpp example
@@ -105,6 +119,9 @@ private:
     RtAudio::StreamOptions options;
     RtAudio *mRTaudio;
     TestAudio * mTest;
+#ifndef AUDIO_ONLY
+    UDP * mUdp;
+#endif
 };
 
 class HackTrip
@@ -114,27 +131,31 @@ public:
     void run();
     void stop();
 private:
-    static const int mServerTcpPort = 4464;
-    static const int mLocalAudioUdpPort = 4464;
-    static const int mFPP = 256;
-    static const int mSocketWaitMs = 1500;
     static const int mSampleRate = 48000;
+    static const int mFPP = 256;
     static const int mChannels = 2;
-    static const int mBufferQueueLength = 3; // queue not used for localhost testing
     static const int mBytesPerSample = sizeof(MY_TYPE);
     static const int mAudioDataLen = mFPP * mChannels * mBytesPerSample;
     constexpr static const double mScale = 32767.0;
     constexpr static const double mInvScale = 1.0 / 32767.0;
     static const int mNumberOfBuffersSuggestionToRtAudio = 2;
+#ifndef AUDIO_ONLY
+    static const int mServerTcpPort = 4464;
+    static const int mLocalAudioUdpPort = 4464;
+    static const int mSocketWaitMs = 1500;
+    static const int mBufferQueueLength = 3; // queue not used for localhost testing
     static const int mExitPacketSize = 63;
     static const int mTimeoutMS = 1000;
     constexpr static const double mPacketPeriodMS = (1000.0 / (double)(mSampleRate / mFPP));
-    friend class TCP;
-    friend class UDP;
+#endif
     friend class Audio;
     friend class TestAudio;
+#ifndef AUDIO_ONLY
+    friend class TCP;
+    friend class UDP;
     TCP mTcp;
     UDP mUdp;
+#endif
     Audio mAudio;
 };
 

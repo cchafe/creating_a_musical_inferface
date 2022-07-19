@@ -1,4 +1,4 @@
-#include "hacktrip.h"
+﻿#include "hacktrip.h"
 #include <QtEndian>
 #include <QUdpSocket>
 #include <netinet/in.h>
@@ -7,11 +7,31 @@
 
 void HackTrip::connect()
 {
+#ifndef AUDIO_ONLY
     mUdp.setPeerUdpPort( mTcp.connectToServer() );
-    mAudio.setUdp(&mUdp);
     mUdp.setTest(HackTrip::mChannels);
+    mAudio.setUdp(&mUdp);
+#endif
+    mAudio.setTest(HackTrip::mChannels);
 }
 
+void HackTrip::run()
+{
+#ifndef AUDIO_ONLY
+    mUdp.start();
+#endif
+    mAudio.start();
+}
+
+void HackTrip::stop()
+{
+#ifndef AUDIO_ONLY
+    mUdp.stop();
+#endif
+    mAudio.stop();
+}
+
+#ifndef AUDIO_ONLY
 int TCP::connectToServer()
 {
     QHostAddress serverHostAddress;
@@ -40,19 +60,6 @@ int TCP::connectToServer()
         std::cout << "TCP: not connected to server" << std::endl;
     delete[] port_buf;
     return peerUdpPort;
-}
-
-void HackTrip::run()
-{
-    mUdp.start();
-    mAudio.setTest(HackTrip::mChannels);
-    mAudio.start();
-}
-
-void HackTrip::stop()
-{
-    mUdp.stop();
-    mAudio.stop();
 }
 
 void UDP::start() {
@@ -102,8 +109,6 @@ void UDP::start() {
     connect(&mSendTmer, &QTimer::timeout, this, &UDP::sendDummyData);
     mSendTmer.start(HackTrip::mPacketPeriodMS);
 };
-
-//https://stackoverflow.com/questions/40200535/c-qt-qudp-socket-not-sending-receiving-data
 
 void UDP::readPendingDatagrams() {
     //read datagrams in a loop to make sure that all received datagrams are processed
@@ -157,6 +162,23 @@ void UDP::send(int8_t *audioBuf) {
     mSendSeq %= 65536;
 }
 
+void UDP::stop()
+{
+    disconnect(&mSendTmer, &QTimer::timeout, this, &UDP::sendDummyData);
+    mSendTmer.stop();
+    disconnect(&mRcvTimeout, &QTimer::timeout, this, &UDP::rcvTimeout);
+    mRcvTimeout.stop();
+    disconnect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
+    // Send exit packet (with 1 redundant packet).
+    std::cout << "sending exit packet" << std::endl;
+    QByteArray stopBuf;
+    stopBuf.resize(HackTrip::mExitPacketSize);
+    stopBuf.fill(0xff,HackTrip::mExitPacketSize);
+    writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
+    writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
+    close(); // stop rcv
+}
+
 int UDP::audioCallback( void *outputBuffer, void *inputBuffer,
                         unsigned int /* nBufferFrames */,
                         double /* streamTime */, RtAudioStreamStatus /* status */,
@@ -179,38 +201,6 @@ int UDP::audioCallback( void *outputBuffer, void *inputBuffer,
     return 0;
 }
 
-void UDP::stop()
-{
-    disconnect(&mSendTmer, &QTimer::timeout, this, &UDP::sendDummyData);
-    mSendTmer.stop();
-    disconnect(&mRcvTimeout, &QTimer::timeout, this, &UDP::rcvTimeout);
-    mRcvTimeout.stop();
-    disconnect(this, &QUdpSocket::readyRead, this, &UDP::readPendingDatagrams);
-    // Send exit packet (with 1 redundant packet).
-    std::cout << "sending exit packet" << std::endl;
-    QByteArray stopBuf;
-    stopBuf.resize(HackTrip::mExitPacketSize);
-    stopBuf.fill(0xff,HackTrip::mExitPacketSize);
-    writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
-    writeDatagram(stopBuf, serverHostAddress, mPeerUdpPort);
-    close(); // stop rcv
-}
-
-/*
-
-int Audio::audioCallback( void *outputBuffer, void *inputBuffer,
-                        unsigned int /* nBufferFrames */,
-                        double /* streamTime */, RtAudioStreamStatus /* status */,
-                        void * /* data */ ) // last arg is used for "this"
-{
-    // audio diagnostics, modify or print output and input buffers
-//        memcpy(outputBuffer, inputBuffer, HackTrip::mAudioDataLen); // test straight wire
-        mTest->sineTest((MY_TYPE *)outputBuffer); // output sines
-        mTest->printSamples((MY_TYPE *)outputBuffer); // print audio signal
-
-    return 0;
-}
-*/
 int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                   unsigned int nBufferFrames, double streamTime,
                                   RtAudioStreamStatus status, void *arg)
@@ -218,7 +208,21 @@ int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
     return static_cast<UDP*>(arg)->audioCallback(
                 outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
-/*
+#else
+
+int Audio::audioCallback( void *outputBuffer, void *inputBuffer,
+                        unsigned int /* nBufferFrames */,
+                        double /* streamTime */, RtAudioStreamStatus /* status */,
+                        void * /* data */ ) // last arg is used for "this"
+{
+    // audio diagnostics, modify or print output and input buffers
+        memcpy(outputBuffer, inputBuffer, HackTrip::mAudioDataLen); // test straight wire
+        mTest->sineTest((MY_TYPE *)outputBuffer); // output sines
+        mTest->printSamples((MY_TYPE *)outputBuffer); // print audio signal
+
+    return 0;
+}
+
 int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
                                   unsigned int nBufferFrames, double streamTime,
                                   RtAudioStreamStatus status, void *arg)
@@ -226,7 +230,8 @@ int Audio::wrapperProcessCallback(void *outputBuffer, void *inputBuffer,
     return static_cast<Audio*>(arg)->audioCallback(
                 outputBuffer, inputBuffer, nBufferFrames, streamTime, status, arg);
 }
-*/
+#endif
+
 void Audio::start() {
     m_streamTimePrintIncrement = 1.0; // seconds
     m_streamTimePrintTime = 1.0; // seconds
@@ -256,17 +261,19 @@ void Audio::start() {
     std::cout << "\tor the choice in the code\n";
     m_adac->showWarnings(true);
     unsigned int bufferFrames = HackTrip::mFPP;
+#ifndef AUDIO_ONLY
     if (m_adac->openStream( &m_oParams, &m_iParams, FORMAT, HackTrip::mSampleRate,
                             &bufferFrames, &Audio::wrapperProcessCallback,
                             (void*)mUdp,  &options ))
         std::cout << "\nCouldn't open audio device streams!\n";
-/*
+#else
     if (m_adac->openStream( &m_oParams, &m_iParams, FORMAT, HackTrip::mSampleRate,
                             &bufferFrames, &Audio::wrapperProcessCallback,
                             (void*)this,  &options ))
         std::cout << "\nCouldn't open audio device streams!\n";
 
-*/    if (m_adac->isStreamOpen() == false) {
+#endif
+    if (m_adac->isStreamOpen() == false) {
         std::cout << "\nCouldn't open audio device streams!\n";
         exit(1);
     } else {

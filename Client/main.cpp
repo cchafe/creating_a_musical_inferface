@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[])
 {
-    qRegisterMetaType<QAbstractSocket::SocketError>();
+//    qRegisterMetaType<QAbstractSocket::SocketError>();
     QApplication a(argc, argv);
     MainWindow w;
     w.show();
