@@ -2,6 +2,7 @@
 #define HACKTRIP_H
 
 //#define AUDIO_ONLY
+//#define FAKE_STREAMS
 
 #include <rtaudio/RtAudio.h>
 
@@ -10,6 +11,7 @@
 #include <QThread>
 #include <QHostInfo>
 #include <QUdpSocket>
+#include <QMutexLocker>
 #include <QTimer>
 
 const QString gVersion = "clientV2";
@@ -73,12 +75,15 @@ private:
     int mSendSeq;
     QElapsedTimer mRcvTmer;
     QTimer mRcvTimeout;
-    QTimer mSendTmer;
     TestAudio * mTest;
 public slots:
     void readPendingDatagrams();
-    void sendDummyData();
     void rcvTimeout();
+#ifdef FAKE_STREAMS
+    void sendDummyData();
+private:
+    QTimer mSendTmer;
+#endif
 };
 
 class TCP : public QTcpSocket {
@@ -147,6 +152,8 @@ private:
     static const int mExitPacketSize = 63;
     static const int mTimeoutMS = 1000;
     constexpr static const double mPacketPeriodMS = (1000.0 / (double)(mSampleRate / mFPP));
+    static const int mRingBufferLength = 50;
+    static const int mReportAfterPackets = 500;
 #endif
     friend class Audio;
     friend class TestAudio;
