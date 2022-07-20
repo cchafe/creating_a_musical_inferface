@@ -8,7 +8,7 @@ CONFIG += c++17
 # build needs environment set
 # export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 # or equiv in Projects : Build : Environment
-# in ../rtaudip
+# in ../rtaudio
 # ./autogen.sh
 # make, make install
 # and needs
