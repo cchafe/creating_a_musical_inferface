@@ -1,7 +1,7 @@
 #ifndef HACKTRIP_H
 #define HACKTRIP_H
 
-//#define AUDIO_ONLY
+#define AUDIO_ONLY
 //#define FAKE_STREAMS
 
 #include <rtaudio/RtAudio.h>
@@ -26,7 +26,6 @@ const QString gServer = "jackloop256.stanford.edu";
 
 typedef signed short MY_TYPE; // audio interface data is 16bit ints
 #define FORMAT RTAUDIO_SINT16 // which has this rtaudio name
-#define SCALE 32767.0 // audio samples for processing are doubles, so this is the conversion
 
 class TestAudio {
 public:
@@ -122,7 +121,6 @@ private:
     RtAudio::StreamParameters m_iParams;
     RtAudio::StreamParameters m_oParams;
     RtAudio::StreamOptions options;
-    RtAudio *mRTaudio;
     TestAudio * mTest;
 #ifndef AUDIO_ONLY
     UDP * mUdp;

@@ -224,8 +224,8 @@ int Audio::audioCallback( void *outputBuffer, void *inputBuffer,
 {
     // audio diagnostics, modify or print output and input buffers
         memcpy(outputBuffer, inputBuffer, HackTrip::mAudioDataLen); // test straight wire
-        mTest->sineTest((MY_TYPE *)outputBuffer); // output sines
-        mTest->printSamples((MY_TYPE *)outputBuffer); // print audio signal
+//        mTest->sineTest((MY_TYPE *)outputBuffer); // output sines
+//        mTest->printSamples((MY_TYPE *)outputBuffer); // print audio signal
 
     return 0;
 }
