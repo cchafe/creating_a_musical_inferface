@@ -1,7 +1,7 @@
 #ifndef HACKTRIP_H
 #define HACKTRIP_H
 
-#define AUDIO_ONLY
+//#define AUDIO_ONLY
 //#define FAKE_STREAMS
 
 #include <rtaudio/RtAudio.h>
